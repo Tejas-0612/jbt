@@ -28,5 +28,8 @@ blob-report/
 .DS_Store
 Thumbs.db
 
+# Personal learning notes: local only, never committed
+docs/learning/
+
 # Claude Code personal settings (CLAUDE.md itself IS committed)
 .claude/settings.local.json

@@ -2,7 +2,15 @@ packages:
   - apps/*
   - packages/*
 
+# pnpm blocks install scripts of dependencies unless they are listed here.
+# Review a package's script before allowing it.
+allowBuilds:
+  # Checks that its native compiler binary matches this OS. Used by tsx and vite.
+  esbuild: true
+
 # Versions shared by every package. A package.json uses them with "catalog:".
 catalog:
   # Stay on 6.0.x: typescript-eslint does not support 6.1+ or 7 yet.
   typescript: ~6.0.3
+  zod: ^4.6.7
+  vitest: ^5.0.5

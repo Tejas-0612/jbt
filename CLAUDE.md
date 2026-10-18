@@ -6,7 +6,7 @@ Core promise: **know every application, understand what happened, and know what 
 The **Application** is the central object. Timeline, follow-ups, interviews and notes all hang off it.
 Target: **real public users** (after the MVP proves itself; see "Before public launch").
 
-State (2026-10-18): **Phase 0 in progress.** Steps 1–3 done and committed (step 3 = Docker: Postgres 18 on 5433 with `jbt_dev` + `jbt_test`, Mailpit on 1025/8025, `.env.example`). Next: step 4 (Fastify API), to be discussed with the user before building. Commands: `pnpm typecheck`, `pnpm lint`, `pnpm format` / `format:check`, `pnpm docker:up` / `docker:down` / `docker:reset` (reset wipes the DB). GitHub: the user's personal account `Tejas-0612`; a private repo is not created yet.
+State (2026-10-18): **Phase 0 in progress.** Steps 1–3 done and committed (step 3 = Docker: Postgres 18 on 5433 with `jbt_dev` + `jbt_test`, Mailpit on 1025/8025, `.env.example`). Step 4 (Fastify API: `/health`, config validation, logging, request IDs, error envelope, graceful shutdown, 8 Vitest tests) done and committed. Next: step 5 (Prisma + `/ready`), to be discussed before building. Commands: `pnpm typecheck`, `pnpm lint`, `pnpm format` / `format:check`, `pnpm docker:up` / `docker:down` / `docker:reset` (reset wipes the DB). GitHub: the user's personal account `Tejas-0612`; a private repo is not created yet.
 
 ## How we work (agreed with the user)
 - Build step by step in vertical slices (UI → API → service → DB → tests). One slice at a time, like a developer, not a vibe coder.
@@ -17,6 +17,7 @@ State (2026-10-18): **Phase 0 in progress.** Steps 1–3 done and committed (ste
 - **This file overrides the docs where they conflict.**
 - **This file is committed to git: never put secrets in it** (keys, passwords, connection strings, personal emails). Secrets go in `.env`, which is gitignored.
 - **The user is new to Docker.** Every Docker-related change gets an in-depth explanation (concepts, what each line does, why it's needed, what can go wrong) before moving to the next step. Teach with real output from their machine.
+- **Learning notes go in `docs/learning/`**, which is gitignored. Never commit them.
 - **Never commit on your own.** Make the changes, then show what changed (files + a short summary). The user reviews, may ask for changes, and says when to commit. Only then commit.
 - **Commits must use the user's personal identity**, set repo-locally (`git config --local`). The global identity on this machine is their work account. Before any commit, check that `git config user.email` is the personal one, not `@finasyst.in`. On a new machine or clone, set the local identity before the first commit.
 
@@ -34,6 +35,7 @@ State (2026-10-18): **Phase 0 in progress.** Steps 1–3 done and committed (ste
 | Reminders, worker, idempotency | `Notification_Background_Jobs` |
 | Build order, slice template, milestones | `Implementation_Vertical_Slice_Plan` |
 | Logging, testing, infra, CI/CD, perf, files, roadmap | the remaining docs (mostly "later") |
+| Learning notes for the user (keep updated when the setup changes). **Gitignored, local only, never commit** | `docs/learning/docker.md` |
 | Visual design: colours, type, components, layouts. **Draft direction, not final** (10 Oct 2026, by the user) | `docs/Harbor Slate — Visual Direction.md` (full text, read this) + `docs/mockups/` (`dashboard-light.png`, `dashboard-dark.png`, `palette.png`: the PDF's images, viewable with Read). The PDF itself can't be rendered on this machine |
 
 ## Design (Harbor Slate): settled 2026-10-18
@@ -133,7 +135,9 @@ Cut from the MVP only, not from the project. Revisit after the core works.
 | Forms / validation | React Hook Form + Zod (schemas in `packages/shared`) |
 | UI | Tailwind + shadcn/ui |
 | Database | PostgreSQL in Docker locally on **port 5433** (project-only, pinned version, resettable), Prisma, UUID ids. View data with pgAdmin (`localhost:5433`) or Prisma Studio. Production host: Neon (lean; confirm at deploy). Never use Supabase's auth/auto-APIs, only its database, if ever chosen |
-| Tests | Vitest (unit/API via `app.inject()`), Playwright (E2E) |
+| API structure | `apps/api/src/`: `server.ts` (entry: config → `buildApp` → listen → SIGINT/SIGTERM shutdown), `app.ts` (`buildApp(config)`, never listens), `config/env.ts` (Zod env schema; fails fast listing every bad setting), `http/errors.ts` (404 + error envelope; 5xx never leaks details; thrown values are `unknown`, so narrow them), `modules/<name>/<name>.routes.ts` (Fastify plugins in callback style with `done()`, because `require-await` forbids async plugins with no await). Port 4000, `/health` at the root. Dev runner: `tsx watch` with `--env-file-if-exists=../../.env`. Logs: pino-pretty with local time in dev, JSON elsewhere; auth/cookie headers redacted; every request gets a UUID `x-request-id` |
+| Tests | Vitest, **colocated** `*.test.ts` next to the code; API tests use `app.inject()` (no real port). Playwright (E2E) later |
+| Dependency install scripts | pnpm blocks them. Allowed ones are listed in `allowBuilds` in `pnpm-workspace.yaml`, after reviewing the script. Currently: `esbuild` |
 | Logging | pino (built into Fastify) |
 | Email | Nodemailer over SMTP: Mailpit in dev (local Docker), Resend in prod (free: 3,000/month, 100/day; needs own domain to send to others) |
 | CI | GitHub Actions |
