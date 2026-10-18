@@ -6,7 +6,7 @@ Core promise: **know every application, understand what happened, and know what 
 The **Application** is the central object. Timeline, follow-ups, interviews and notes all hang off it.
 Target: **real public users** (after the MVP proves itself; see "Before public launch").
 
-State (2026-10-18): **Phase 0 in progress.** Steps 1–2 done (git repo, pnpm workspace, TypeScript/ESLint/Prettier, `packages/shared` with the status list). Next: step 3 (Docker Compose: Postgres on 5433 + Mailpit, `.env.example`). Commands: `pnpm typecheck`, `pnpm lint`, `pnpm format` / `format:check`. GitHub: the user's personal account `Tejas-0612`; a private repo is not created yet.
+State (2026-10-18): **Phase 0 in progress.** Steps 1–3 done and committed (step 3 = Docker: Postgres 18 on 5433 with `jbt_dev` + `jbt_test`, Mailpit on 1025/8025, `.env.example`). Next: step 4 (Fastify API), to be discussed with the user before building. Commands: `pnpm typecheck`, `pnpm lint`, `pnpm format` / `format:check`, `pnpm docker:up` / `docker:down` / `docker:reset` (reset wipes the DB). GitHub: the user's personal account `Tejas-0612`; a private repo is not created yet.
 
 ## How we work (agreed with the user)
 - Build step by step in vertical slices (UI → API → service → DB → tests). One slice at a time, like a developer, not a vibe coder.
@@ -16,6 +16,8 @@ State (2026-10-18): **Phase 0 in progress.** Steps 1–2 done (git repo, pnpm wo
 - Don't create new planning docs for small features. The 17 docs + the design PDF are reference material, not a backlog.
 - **This file overrides the docs where they conflict.**
 - **This file is committed to git: never put secrets in it** (keys, passwords, connection strings, personal emails). Secrets go in `.env`, which is gitignored.
+- **The user is new to Docker.** Every Docker-related change gets an in-depth explanation (concepts, what each line does, why it's needed, what can go wrong) before moving to the next step. Teach with real output from their machine.
+- **Never commit on your own.** Make the changes, then show what changed (files + a short summary). The user reviews, may ask for changes, and says when to commit. Only then commit.
 - **Commits must use the user's personal identity**, set repo-locally (`git config --local`). The global identity on this machine is their work account. Before any commit, check that `git config user.email` is the personal one, not `@finasyst.in`. On a new machine or clone, set the local identity before the first commit.
 
 ## Docs map (`docs/Job_Application_Tracker_*.md`)
@@ -139,4 +141,4 @@ Cut from the MVP only, not from the project. Revisit after the core works.
 
 Cost rule: the user doesn't want to pay for anything yet. Prefer free tiers; the first paid item will be a domain, before public launch.
 
-Dev machine (Windows 10): Node 24.17, git 2.54, Docker 29.6 + Compose v5, pgAdmin 4. A native PostgreSQL 18 Windows service already runs on port 5432 (the user's, for other projects): leave it alone, which is why ours uses 5433. pnpm 12.14 installed globally for the user (npm, no admin).
+Dev machine (Windows 10): Node 24.17, git 2.54, Docker 29.6 + Compose v5, pgAdmin 4. A native PostgreSQL 18 Windows service already runs on port 5432 (the user's, for other projects): leave it alone, which is why ours uses 5433. pnpm 12.14 installed globally for the user (npm, no admin). Docker Desktop is a per-user install (`%LOCALAPPDATA%\Programs\DockerDesktop\Docker Desktop.exe`) and isn't always running. **Known quirk:** right after Docker Desktop starts, image pulls can fail with "server gave HTTP response to HTTPS client" and containers can start with no published ports (`docker port` prints nothing). Wait a moment, then `docker compose down` + `pnpm docker:up`. Postgres 18 images keep data in `/var/lib/postgresql` (PGDATA `/var/lib/postgresql/18/docker`).

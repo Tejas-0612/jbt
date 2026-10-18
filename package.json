@@ -11,7 +11,10 @@
     "lint": "eslint .",
     "typecheck": "pnpm -r --if-present run typecheck",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "docker:up": "docker compose up -d --wait",
+    "docker:down": "docker compose down",
+    "docker:reset": "docker compose down -v && docker compose up -d --wait"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
