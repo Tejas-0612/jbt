@@ -1,0 +1,32 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+build/
+*.tsbuildinfo
+
+# Environment files hold secrets. Only the example is committed.
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+
+# Test output
+coverage/
+playwright-report/
+test-results/
+blob-report/
+
+# Editors and OS
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea/
+.DS_Store
+Thumbs.db
+
+# Claude Code personal settings (CLAUDE.md itself IS committed)
+.claude/settings.local.json
