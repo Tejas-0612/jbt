@@ -1,0 +1,8 @@
+packages:
+  - apps/*
+  - packages/*
+
+# Versions shared by every package. A package.json uses them with "catalog:".
+catalog:
+  # Stay on 6.0.x: typescript-eslint does not support 6.1+ or 7 yet.
+  typescript: ~6.0.3

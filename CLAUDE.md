@@ -6,7 +6,7 @@ Core promise: **know every application, understand what happened, and know what 
 The **Application** is the central object. Timeline, follow-ups, interviews and notes all hang off it.
 Target: **real public users** (after the MVP proves itself; see "Before public launch").
 
-State (2026-10-18): **Phase 0 in progress.** Step 1 done (git repo on `main`, pnpm installed, repo config files, first commit). Next: step 2 (pnpm workspace). GitHub: the user's personal account `Tejas-0612`; a private repo is not created yet.
+State (2026-10-18): **Phase 0 in progress.** Steps 1–2 done (git repo, pnpm workspace, TypeScript/ESLint/Prettier, `packages/shared` with the status list). Next: step 3 (Docker Compose: Postgres on 5433 + Mailpit, `.env.example`). Commands: `pnpm typecheck`, `pnpm lint`, `pnpm format` / `format:check`. GitHub: the user's personal account `Tejas-0612`; a private repo is not created yet.
 
 ## How we work (agreed with the user)
 - Build step by step in vertical slices (UI → API → service → DB → tests). One slice at a time, like a developer, not a vibe coder.
@@ -123,7 +123,9 @@ Cut from the MVP only, not from the project. Revisit after the core works.
 ## Tooling (settled 2026-10-17)
 | Area | Choice |
 |---|---|
-| Runtime / packages | Node.js 24 LTS, pnpm workspaces |
+| Runtime / packages | Node.js 24 LTS, pnpm 12 workspaces (`apps/*`, `packages/*`). Shared versions live in the `catalog:` in `pnpm-workspace.yaml` |
+| TypeScript | **6.0.x** (`~6.0.3` in the catalog). TS 7 (native) is out, but typescript-eslint supports only `<6.1`; revisit when it does. Strict base config in `tsconfig.base.json` (`noUncheckedIndexedAccess`, `verbatimModuleSyntax`, `types: []`, Bundler resolution); each package adds its own `lib`/`types` |
+| Lint / format | ESLint 10 flat config with **type-aware** typescript-eslint (`recommendedTypeChecked`); Prettier 3.9 pinned exactly (single quotes, width 100). `docs/` and CLAUDE.md are never reformatted |
 | Backend | **Fastify**, on trial until the MVP; the user will re-evaluate then. Keep services and business logic framework-free (no Fastify types outside route/plugin files) so a switch only touches the HTTP layer |
 | Frontend | Vite + React + TS, React Router, TanStack Query |
 | Forms / validation | React Hook Form + Zod (schemas in `packages/shared`) |

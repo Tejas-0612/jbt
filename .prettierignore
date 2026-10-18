@@ -1,0 +1,6 @@
+# Prettier also skips everything in .gitignore.
+pnpm-lock.yaml
+
+# Planning docs and notes are written by hand; don't reformat them.
+docs/
+CLAUDE.md
