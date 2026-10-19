@@ -1,5 +1,6 @@
 import { buildApp } from './app';
 import { loadConfig, type Config } from './config/env';
+import { createDb, describeDbError, pingDatabase } from './db/client';
 
 function readConfigOrExit(): Config {
   try {
@@ -12,10 +13,11 @@ function readConfigOrExit(): Config {
 }
 
 const config = readConfigOrExit();
-const app = buildApp(config);
+const db = createDb(config.DATABASE_URL);
+const app = buildApp({ config, db });
 
 // Ctrl+C (SIGINT) or the host stopping us (SIGTERM): stop taking new requests,
-// let the ones in progress finish, then exit.
+// let the ones in progress finish, close database connections, then exit.
 for (const signal of ['SIGINT', 'SIGTERM'] as const) {
   process.once(signal, () => {
     app.log.info({ signal }, 'shutting down');
@@ -35,3 +37,15 @@ try {
   app.log.fatal({ err: error }, 'could not start the server');
   process.exit(1);
 }
+
+// Not fatal: the API keeps running without the database and /ready reports it.
+// This only saves you from wondering why requests fail.
+pingDatabase(db).then(
+  () => app.log.info('database reachable'),
+  (error: unknown) => {
+    app.log.warn(
+      { reason: describeDbError(error) },
+      'database not reachable yet. Is Docker running? (pnpm docker:up)',
+    );
+  },
+);

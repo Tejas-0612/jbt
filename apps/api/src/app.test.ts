@@ -1,12 +1,18 @@
 import { afterAll, describe, expect, it } from 'vitest';
 import { buildApp } from './app';
-import { loadConfig } from './config/env';
+import { createDb } from './db/client';
+import { testConfig } from './test/config';
 
-const testConfig = loadConfig({ NODE_ENV: 'test', LOG_LEVEL: 'silent' });
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
+/** These tests never query, so the database connection is never actually opened. */
+function newApp() {
+  const config = testConfig();
+  return buildApp({ config, db: createDb(config.DATABASE_URL) });
+}
+
 describe('API basics', () => {
-  const app = buildApp(testConfig);
+  const app = newApp();
   afterAll(() => app.close());
 
   it('GET /health reports that the API is up', async () => {
@@ -35,7 +41,7 @@ describe('API basics', () => {
 });
 
 describe('unexpected errors', () => {
-  const app = buildApp(testConfig);
+  const app = newApp();
   app.get('/boom', () => {
     throw new Error('database password is hunter2');
   });

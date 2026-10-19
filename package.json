@@ -16,7 +16,11 @@
     "format:check": "prettier --check .",
     "docker:up": "docker compose up -d --wait",
     "docker:down": "docker compose down",
-    "docker:reset": "docker compose down -v && docker compose up -d --wait"
+    "docker:reset": "docker compose down -v && docker compose up -d --wait",
+    "db:generate": "pnpm --filter @jbt/api db:generate",
+    "db:migrate": "pnpm --filter @jbt/api db:migrate",
+    "db:status": "pnpm --filter @jbt/api db:status",
+    "db:studio": "pnpm --filter @jbt/api db:studio"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

@@ -7,6 +7,10 @@ packages:
 allowBuilds:
   # Checks that its native compiler binary matches this OS. Used by tsx and vite.
   esbuild: true
+  # Downloads Prisma's migration engine (a native program) for this OS.
+  '@prisma/engines': true
+  # Only prints a warning if Node is too old. Not needed; reviewed and declined.
+  prisma: false
 
 # Versions shared by every package. A package.json uses them with "catalog:".
 catalog:
@@ -14,3 +18,8 @@ catalog:
   typescript: ~6.0.3
   zod: ^4.6.7
   vitest: ^5.0.5
+  # Prisma 7 (stable). Its "latest" tag points to an 8.0 release candidate.
+  # All three must always be the exact same version.
+  prisma: 7.10.1
+  '@prisma/client': 7.10.1
+  '@prisma/adapter-pg': 7.10.1

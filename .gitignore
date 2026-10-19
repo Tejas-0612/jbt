@@ -6,6 +6,9 @@ dist/
 build/
 *.tsbuildinfo
 
+# Prisma Client, generated from prisma/schema.prisma (by `pnpm install` / `pnpm db:generate`)
+apps/api/generated/
+
 # Environment files hold secrets. Only the example is committed.
 .env
 .env.*

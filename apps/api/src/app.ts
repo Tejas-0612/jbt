@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import Fastify, { type FastifyInstance, type FastifyServerOptions } from 'fastify';
 import type { Config } from './config/env';
+import type { Db } from './db/client';
 import { registerErrorHandlers } from './http/errors';
 import { healthRoutes } from './modules/health/health.routes';
 
@@ -23,11 +24,17 @@ function loggerOptions(config: Config): FastifyServerOptions['logger'] {
   };
 }
 
+/** Everything the API needs from outside. Tests can pass fakes (e.g. an unreachable db). */
+export interface AppDependencies {
+  config: Config;
+  db: Db;
+}
+
 /**
  * Creates the API without starting it. Tests call this and send fake requests
  * with app.inject(); server.ts calls it and then listens on a real port.
  */
-export function buildApp(config: Config): FastifyInstance {
+export function buildApp({ config, db }: AppDependencies): FastifyInstance {
   const app = Fastify({
     logger: loggerOptions(config),
     // Every request gets a unique ID, shown in every log line it produces.
@@ -40,9 +47,14 @@ export function buildApp(config: Config): FastifyInstance {
     done();
   });
 
+  // app.close() (shutdown, end of tests) also closes the database connections.
+  app.addHook('onClose', async () => {
+    await db.$disconnect();
+  });
+
   registerErrorHandlers(app);
 
-  void app.register(healthRoutes);
+  void app.register(healthRoutes, { db });
 
   return app;
 }

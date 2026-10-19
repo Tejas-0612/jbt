@@ -1,0 +1,13 @@
+// The database, described for Prisma. Tables (models) arrive in slice 1.
+// After changing this file: `pnpm db:migrate` (creates + applies a migration).
+
+generator client {
+  // Prisma 7's ESM-first generator: writes TypeScript into ../generated/prisma
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  // The connection URL is not here: it comes from prisma7.config.ts.
+}
