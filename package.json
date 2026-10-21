@@ -8,7 +8,8 @@
     "node": ">=24"
   },
   "scripts": {
-    "dev": "pnpm --filter @jbt/api dev",
+    "dev": "pnpm -r --parallel --no-bail --if-present run dev",
+    "check": "pnpm typecheck && pnpm lint && pnpm format:check && pnpm test",
     "test": "pnpm -r --if-present run test",
     "lint": "eslint .",
     "typecheck": "pnpm -r --if-present run typecheck",
@@ -26,6 +27,8 @@
     "@eslint/js": "^10.0.1",
     "eslint": "^10.13.0",
     "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "eslint-plugin-react-refresh": "^0.5.7",
     "globals": "^17.13.0",
     "prettier": "3.9.10",
     "typescript": "catalog:",

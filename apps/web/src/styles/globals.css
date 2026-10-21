@@ -1,0 +1,244 @@
+@import 'tailwindcss';
+
+/*
+ * Harbor Slate design tokens (docs/Harbor Slate — Visual Direction.md).
+ *
+ * Layer 1 (here): raw values as CSS variables, one set for light mode and one
+ * for dark mode. Change a value here and the whole app follows.
+ * Layer 2 (@theme inline, below): exposes them to Tailwind, so `bg-primary`
+ * or `text-muted-foreground` mean OUR colours.
+ *
+ * Names follow shadcn/ui's conventions where they exist (--primary, --card,
+ * --border…), so its components pick up Harbor Slate automatically. Note:
+ * shadcn's --accent means "hover background", NOT the brand accent; the sand
+ * brand accent is --highlight.
+ *
+ * Dark mode follows the system setting (Windows/macOS). When a theme switch is
+ * added to Settings, move to a .dark class instead of the media query.
+ */
+
+:root {
+  /* Surfaces */
+  --background: #f8f6f2; /* ivory canvas */
+  --card: #ffffff; /* cards, tables, panels */
+  --popover: #fffefc; /* menus, popovers, modals */
+  --sidebar: #f1eee8;
+
+  /* Text */
+  --foreground: #1e2329; /* headings, body */
+  --card-foreground: #1e2329;
+  --popover-foreground: #1e2329;
+  --subtle-foreground: #4d5560; /* labels, meta, column headers */
+  --muted-foreground: #69707a; /* timestamps, placeholders, helper text */
+
+  /* Brand */
+  --primary: #3d5a80; /* slate: primary buttons, links, focus ring */
+  --primary-hover: #314967;
+  --primary-foreground: #ffffff;
+  --brand-deep: #25384f; /* wordmark, active nav label */
+  --highlight: #d9a574; /* sand: decorative only, never carries meaning alone */
+  --highlight-text: #8a5a2b; /* when a sand-coloured label is unavoidable */
+
+  /* shadcn roles mapped to Harbor Slate */
+  --secondary: #f1eee8;
+  --secondary-foreground: #1e2329;
+  --muted: #f4f1ec;
+  --accent: #f4f1ec; /* hover background (e.g. table row hover) */
+  --accent-foreground: #1e2329;
+  --border: #e8e3da; /* warm hairline: dividers, card edges */
+  --input: #8e949c; /* control border: inputs, checkboxes (3:1+) */
+  --ring: #3d5a80;
+
+  /* Feedback */
+  --destructive: #c42b3a;
+  --success: #2e7d4f;
+  --warning: #9e5c06;
+  --info: #1c6fae;
+
+  /*
+   * Application status. --status-x = dot / bar / tint colour.
+   * --status-x-text = badge text on its 12% tint, darkened where needed to
+   * reach 4.5:1 (approved 2026-10-18). ACCEPTED is a solid badge instead.
+   */
+  --status-saved: #646b78;
+  --status-saved-text: #5e6572;
+  --status-applied: #1c6fae;
+  --status-applied-text: #1068a6;
+  --status-screening: #0f7a73;
+  --status-screening-text: #007069;
+  --status-interviewing: #6b4fb8;
+  --status-interviewing-text: #6b4fb8;
+  --status-offer: #2e7d4f;
+  --status-offer-text: #207144;
+  --status-accepted: #256a42;
+  --status-accepted-text: #ffffff;
+  --status-rejected: #a0524a;
+  --status-rejected-text: #9b4e46;
+  --status-withdrawn: #69707a;
+  --status-withdrawn-text: #5f6670;
+  --status-ghosted: #725f4e;
+  --status-ghosted-text: #725f4e;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #121519;
+    --card: #1a1f25;
+    --popover: #222830;
+    --sidebar: #15191e;
+
+    --foreground: #eceff2;
+    --card-foreground: #eceff2;
+    --popover-foreground: #eceff2;
+    --subtle-foreground: #aeb6c0;
+    --muted-foreground: #87909b;
+
+    --primary: #93afd3;
+    --primary-hover: #a9c1e0;
+    --primary-foreground: #121519; /* dark text on light slate (8.1:1) */
+    --brand-deep: #e0e7f0;
+    --highlight: #e2b48a;
+    --highlight-text: #e2b48a;
+
+    --secondary: #222830;
+    --secondary-foreground: #eceff2;
+    --muted: #222830;
+    --accent: #222830;
+    --accent-foreground: #eceff2;
+    --border: #2a3038;
+    --input: #68727e;
+    --ring: #93afd3;
+
+    --destructive: #f27180;
+    --success: #5cc287;
+    --warning: #e9a84a;
+    --info: #5fb0ea;
+
+    --status-saved: #8a929c;
+    --status-saved-text: #8f97a1;
+    --status-applied: #5fb0ea;
+    --status-applied-text: #5fb0ea;
+    --status-screening: #3fb8a6;
+    --status-screening-text: #3fb8a6;
+    --status-interviewing: #a68eea;
+    --status-interviewing-text: #a68eea;
+    --status-offer: #5cc287;
+    --status-offer-text: #5cc287;
+    --status-accepted: #5cc287;
+    --status-accepted-text: #121519;
+    --status-rejected: #d99088;
+    --status-rejected-text: #d99088;
+    --status-withdrawn: #87909b;
+    --status-withdrawn-text: #8d96a1;
+    --status-ghosted: #ae9a88;
+    --status-ghosted-text: #ae9a88;
+  }
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-subtle-foreground: var(--subtle-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-brand-deep: var(--brand-deep);
+  --color-highlight: var(--highlight);
+  --color-highlight-text: var(--highlight-text);
+
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-destructive: var(--destructive);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-info: var(--info);
+
+  --color-status-saved: var(--status-saved);
+  --color-status-saved-text: var(--status-saved-text);
+  --color-status-applied: var(--status-applied);
+  --color-status-applied-text: var(--status-applied-text);
+  --color-status-screening: var(--status-screening);
+  --color-status-screening-text: var(--status-screening-text);
+  --color-status-interviewing: var(--status-interviewing);
+  --color-status-interviewing-text: var(--status-interviewing-text);
+  --color-status-offer: var(--status-offer);
+  --color-status-offer-text: var(--status-offer-text);
+  --color-status-accepted: var(--status-accepted);
+  --color-status-accepted-text: var(--status-accepted-text);
+  --color-status-rejected: var(--status-rejected);
+  --color-status-rejected-text: var(--status-rejected-text);
+  --color-status-withdrawn: var(--status-withdrawn);
+  --color-status-withdrawn-text: var(--status-withdrawn-text);
+  --color-status-ghosted: var(--status-ghosted);
+  --color-status-ghosted-text: var(--status-ghosted-text);
+}
+
+@theme {
+  /* Typography: Figtree for the interface, Newsreader only for human moments. */
+  --font-sans: 'Figtree Variable', ui-sans-serif, system-ui, sans-serif;
+  --font-display: 'Newsreader Variable', Georgia, serif;
+
+  /* Type scale (size / line height). text-xs, text-sm, text-xl, text-2xl
+     already match the design; these fill the gaps. */
+  --text-base: 0.9375rem; /* 15px body */
+  --text-base--line-height: 1.5rem;
+  --text-small: 0.8125rem; /* 13px meta, helper text */
+  --text-small--line-height: 1.125rem;
+  --text-display: 2rem; /* 32px greeting, empty-state headlines */
+  --text-display--line-height: 2.5rem;
+
+  /* Shapes: 8px controls, 12px cards, 16px modals. */
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+
+  /* Soft, warm shadows ("paper on a desk"). */
+  --shadow-card: 0 1px 3px rgb(60 45 30 / 0.06);
+  --shadow-overlay: 0 12px 32px rgb(60 45 30 / 0.12);
+  --shadow-button: 0 1px 2px rgb(37 56 79 / 0.22), inset 0 -1px 0 rgb(0 0 0 / 0.16);
+}
+
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans);
+    font-size: var(--text-base);
+    line-height: var(--text-base--line-height);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Visible focus on every interactive element: 2px slate ring + 2px gap. */
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}

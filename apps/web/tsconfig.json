@@ -1,0 +1,13 @@
+{
+  // Two separate programs: browser code (src/) and the Node-side Vite config.
+  // Keeping them apart stops browser code from using Node-only APIs by accident.
+  "files": [],
+  "references": [{ "path": "./tsconfig.app.json" }, { "path": "./tsconfig.node.json" }],
+  // Repeated from tsconfig.app.json because tools like the shadcn CLI only read
+  // this file to resolve the `@/` shortcut.
+  "compilerOptions": {
+    "paths": {
+      "@/*": ["./src/*"]
+    }
+  }
+}
