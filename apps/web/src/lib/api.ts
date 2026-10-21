@@ -1,32 +1,30 @@
-/** An error answer from the API, or a failure to reach it at all. */
+import { apiErrorBodySchema, successEnvelopeSchema } from '@jbt/shared';
+import type { z } from 'zod';
+
+/** An error answer from the API, a failure to reach it, or an answer of the wrong shape. */
 export class ApiError extends Error {
   readonly status: number;
   readonly code: string;
 
-  constructor(status: number, code: string, message: string) {
-    super(message);
+  constructor(status: number, code: string, message: string, options?: ErrorOptions) {
+    super(message, options);
     this.name = 'ApiError';
     this.status = status;
     this.code = code;
   }
 }
 
-/** The API's error shape: { "error": { "code": "NOT_FOUND", "message": "..." } } */
-interface ErrorEnvelope {
-  error: { code: string; message: string };
-}
-
-function isErrorEnvelope(body: unknown): body is ErrorEnvelope {
-  if (typeof body !== 'object' || body === null || !('error' in body)) return false;
-  const { error } = body;
-  return typeof error === 'object' && error !== null && 'code' in error && 'message' in error;
-}
-
 /**
- * GETs an API endpoint and returns the `data` part of its `{ data }` answer.
- * Throws ApiError for error answers and when the API can't be reached.
+ * GETs an API endpoint, checks its answer against `dataSchema` (from @jbt/shared),
+ * and returns the `data` part. Throws ApiError when:
+ * - the server can't be reached                    → NETWORK_ERROR / API_UNREACHABLE
+ * - the API answers with an error                  → the API's own code (e.g. NOT_FOUND)
+ * - the answer doesn't match the expected shape    → INVALID_RESPONSE
  */
-export async function getJson<T>(path: string): Promise<T> {
+export async function getJson<S extends z.ZodType>(
+  path: string,
+  dataSchema: S,
+): Promise<z.output<S>> {
   let response: Response;
   try {
     response = await fetch(path, { headers: { Accept: 'application/json' } });
@@ -37,12 +35,27 @@ export async function getJson<T>(path: string): Promise<T> {
   const body: unknown = await response.json().catch(() => null);
 
   if (!response.ok) {
-    if (isErrorEnvelope(body)) {
-      throw new ApiError(response.status, body.error.code, body.error.message);
+    const errorBody = apiErrorBodySchema.safeParse(body);
+    if (errorBody.success) {
+      const { code, message } = errorBody.data.error;
+      throw new ApiError(response.status, code, message);
     }
-    // No JSON error: e.g. the dev proxy answers 500 when the API isn't running.
+    // No JSON error: e.g. the dev proxy answers 502 when the API isn't running.
     throw new ApiError(response.status, 'API_UNREACHABLE', 'The API is not responding.');
   }
 
-  return (body as { data: T }).data;
+  // Runtime check, in two steps: the { data } wrapper, then the payload itself.
+  // If the API and web app ever disagree about a shape, fail here with a clear
+  // error instead of breaking somewhere deep in the UI.
+  const envelope = successEnvelopeSchema.safeParse(body);
+  const payload = envelope.success ? dataSchema.safeParse(envelope.data.data) : envelope;
+  if (!payload.success) {
+    throw new ApiError(
+      response.status,
+      'INVALID_RESPONSE',
+      `Unexpected answer from ${path}. The web app and API may be out of sync.`,
+      { cause: payload.error },
+    );
+  }
+  return payload.data;
 }

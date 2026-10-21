@@ -4,6 +4,7 @@ import {
   CircleNotchIcon,
   WarningCircleIcon,
 } from '@phosphor-icons/react';
+import { healthResponseSchema, readyResponseSchema } from '@jbt/shared';
 import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { getJson } from '@/lib/api';
@@ -16,9 +17,10 @@ import { getJson } from '@/lib/api';
 
 type CheckState = 'checking' | 'ok' | 'problem';
 
-function stateOf(query: { isPending: boolean; isSuccess: boolean }): CheckState {
-  if (query.isPending) return 'checking';
-  return query.isSuccess ? 'ok' : 'problem';
+/** "ok" only when the answer actually says what we expect, not just "HTTP 200". */
+function stateOf(isPending: boolean, answerIsGood: boolean): CheckState {
+  if (isPending) return 'checking';
+  return answerIsGood ? 'ok' : 'problem';
 }
 
 function StateIcon({ state }: { state: CheckState }) {
@@ -48,19 +50,20 @@ function StatusRow({ label, state, detail }: { label: string; state: CheckState;
 }
 
 export function StatusPage() {
+  // The shared schemas both type the answers and check them at runtime.
   const health = useQuery({
     queryKey: ['system', 'health'],
-    queryFn: () => getJson<{ status: string }>('/health'),
+    queryFn: () => getJson('/health', healthResponseSchema),
     retry: false,
   });
   const ready = useQuery({
     queryKey: ['system', 'ready'],
-    queryFn: () => getJson<{ status: string }>('/ready'),
+    queryFn: () => getJson('/ready', readyResponseSchema),
     retry: false,
   });
 
-  const apiState = stateOf(health);
-  const databaseState = stateOf(ready);
+  const apiState = stateOf(health.isPending, health.data?.status === 'ok');
+  const databaseState = stateOf(ready.isPending, ready.data?.status === 'ready');
 
   const apiDetail = {
     checking: 'Checking…',
