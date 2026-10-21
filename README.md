@@ -1,5 +1,7 @@
 # Job Tracker
 
+[![CI](https://github.com/Tejas-0612/jbt/actions/workflows/ci.yml/badge.svg)](https://github.com/Tejas-0612/jbt/actions/workflows/ci.yml)
+
 A personal job-search tracker: know every application, understand what happened, and know what to do next.
 
 "Job Tracker" is a working name.
@@ -88,6 +90,8 @@ Tests sit next to the code they test (`*.test.ts`, `*.test.tsx`) and run with Vi
 - **API tests** use the real `jbt_test` database, so run `pnpm docker:up` first. They never touch `jbt_dev`.
 
 To run one package's tests: `pnpm --filter @jbt/web test` (or `@jbt/api`, `@jbt/shared`).
+
+**CI:** on every push to `main` and every pull request, GitHub Actions follows "Getting started" on a fresh Linux machine, then runs the same checks as `pnpm check` and builds the web app. See [`.github/workflows/ci.yml`](.github/workflows/ci.yml).
 
 ## Project layout
 
