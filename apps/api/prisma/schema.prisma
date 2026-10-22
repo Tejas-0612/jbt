@@ -1,5 +1,17 @@
-// The database, described for Prisma. Tables (models) arrive in slice 1.
+// The database, described for Prisma.
 // After changing this file: `pnpm db:migrate` (creates + applies a migration).
+//
+// Conventions:
+// - Tables and columns are snake_case in Postgres (@@map / @map), camelCase in code.
+// - Ids are UUID v7: they start with a timestamp, so new rows land at the end of
+//   the index and ids sort by creation time. Prisma generates them, not Postgres,
+//   so a row inserted by hand (pgAdmin) needs an id.
+// - Timestamps are timestamptz(3): an exact moment, labelled as UTC, in milliseconds
+//   like a JS Date. Prisma's default (timestamp without zone) stores the same value
+//   but doesn't say it's UTC.
+// - Every user-owned table has user_id and is deleted together with its user.
+// - Child rows link to their parent by (parent id, user_id), so the database itself
+//   refuses a row that points at another user's data.
 
 generator client {
   // Prisma 7's ESM-first generator: writes TypeScript into ../generated/prisma
@@ -10,4 +22,128 @@ generator client {
 datasource db {
   provider = "postgresql"
   // The connection URL is not here: it comes from prisma7.config.ts.
+}
+
+// Must contain exactly APPLICATION_STATUSES from @jbt/shared (a test checks it).
+// Adding a value later is easy; removing or renaming one is not.
+enum ApplicationStatus {
+  SAVED
+  APPLIED
+  SCREENING
+  INTERVIEWING
+  OFFER
+  ACCEPTED
+  REJECTED
+  WITHDRAWN
+  GHOSTED
+
+  @@map("application_status")
+}
+
+enum WorkMode {
+  REMOTE
+  HYBRID
+  ONSITE
+
+  @@map("work_mode")
+}
+
+// Values are added when a slice needs them.
+enum ActivityType {
+  STATUS_CHANGED
+
+  @@map("activity_type")
+}
+
+model User {
+  id        String   @id @default(uuid(7)) @db.Uuid
+  // Google's id for the account. Never changes, unlike the email, so users are
+  // identified by it. Seeded dev users have made-up values like "dev-user-a".
+  googleSub String   @unique @map("google_sub")
+  email     String
+  name      String
+  // IANA name, e.g. "Asia/Kolkata". Decides what "today" means for this user.
+  timezone  String
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  companies    Company[]
+  applications Application[]
+  activities   Activity[]
+
+  @@map("users")
+}
+
+model Company {
+  id             String   @id @default(uuid(7)) @db.Uuid
+  userId         String   @map("user_id") @db.Uuid
+  // As the user first typed it, for display.
+  name           String
+  // Lowercase, trimmed, single spaces: "Acme  Corp " → "acme corp". Used for matching.
+  normalizedName String   @map("normalized_name")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  applications Application[]
+
+  // One "Acme Corp" per user; two users each have their own.
+  @@unique([userId, normalizedName])
+  // id is already unique, so this pair is too. Postgres only lets other tables link
+  // to columns that are unique together, and applications link to (id, user_id).
+  @@unique([id, userId])
+  @@map("companies")
+}
+
+model Application {
+  id             String            @id @default(uuid(7)) @db.Uuid
+  userId         String            @map("user_id") @db.Uuid
+  companyId      String            @map("company_id") @db.Uuid
+  roleTitle      String            @map("role_title")
+  status         ApplicationStatus
+  // A calendar date, no time or zone. Empty while the status is SAVED.
+  appliedOn      DateTime?         @map("applied_on") @db.Date
+  jobUrl         String?           @map("job_url")
+  location       String?
+  workMode       WorkMode?         @map("work_mode")
+  // The pasted job description.
+  jobDescription String?           @map("job_description")
+  createdAt      DateTime          @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime          @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // Linked by (company, owner): the company must belong to the same user.
+  // Restrict: a company that still has applications can't be deleted. Deleting the
+  // user still works: Postgres removes the user's applications in the same cascade.
+  company    Company    @relation(fields: [companyId, userId], references: [id, userId], onDelete: Restrict)
+  activities Activity[]
+
+  @@unique([id, userId])
+  // Postgres doesn't index foreign keys by itself; without these, deleting a user
+  // or a company scans the whole table.
+  @@index([userId])
+  @@index([companyId, userId])
+  @@map("applications")
+}
+
+// Something that happened to an application, for its timeline. For STATUS_CHANGED,
+// fromStatus is empty on the first event (when the application was created).
+model Activity {
+  id            String             @id @default(uuid(7)) @db.Uuid
+  userId        String             @map("user_id") @db.Uuid
+  applicationId String             @map("application_id") @db.Uuid
+  type          ActivityType
+  fromStatus    ApplicationStatus? @map("from_status")
+  toStatus      ApplicationStatus? @map("to_status")
+  // When it happened (can be in the past), not when it was recorded.
+  occurredAt    DateTime           @map("occurred_at") @db.Timestamptz(3)
+  createdAt     DateTime           @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // Linked by (application, owner): the application must belong to the same user.
+  application Application @relation(fields: [applicationId, userId], references: [id, userId], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([applicationId, userId])
+  @@map("activities")
 }

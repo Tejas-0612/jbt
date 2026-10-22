@@ -20,6 +20,7 @@
     "docker:reset": "docker compose down -v && docker compose up -d --wait",
     "db:generate": "pnpm --filter @jbt/api db:generate",
     "db:migrate": "pnpm --filter @jbt/api db:migrate",
+    "db:seed": "pnpm --filter @jbt/api db:seed",
     "db:status": "pnpm --filter @jbt/api db:status",
     "db:studio": "pnpm --filter @jbt/api db:studio"
   },
