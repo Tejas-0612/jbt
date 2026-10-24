@@ -1,4 +1,10 @@
-import type { Application, CreateApplicationInput } from '@jbt/shared';
+import type {
+  Application,
+  ApplicationListItem,
+  CreateApplicationInput,
+  ListApplicationsQuery,
+  PageMeta,
+} from '@jbt/shared';
 import { Prisma, type User } from '../../../generated/prisma/client';
 import type { Db } from '../../db/client';
 import { dateColumnFrom, isoDateFrom, noonOn, todayIn } from '../../lib/dates';
@@ -14,6 +20,12 @@ const withCompany = {
   company: { select: { id: true, name: true } },
 } satisfies Prisma.ApplicationInclude;
 type ApplicationRow = Prisma.ApplicationGetPayload<{ include: typeof withCompany }>;
+// The list leaves out the job description: up to 50,000 characters each, never shown there.
+const listOmit = { jobDescription: true } satisfies Prisma.ApplicationOmit;
+type ApplicationListRow = Prisma.ApplicationGetPayload<{
+  include: typeof withCompany;
+  omit: typeof listOmit;
+}>;
 
 /**
  * Creates an application, finding or creating its company by name, and records the
@@ -87,6 +99,76 @@ export async function getApplication(
   return row ? toApplication(row) : null;
 }
 
+/** One page of the user's applications, filtered, searched and sorted as asked. */
+export async function listApplications(
+  db: Db,
+  userId: string,
+  query: ListApplicationsQuery,
+): Promise<{ items: ApplicationListItem[]; meta: PageMeta }> {
+  const where: Prisma.ApplicationWhereInput = { userId };
+  if (query.status) where.status = { in: query.status };
+  if (query.search) {
+    const contains = { contains: escapeLike(query.search), mode: 'insensitive' } as const;
+    where.OR = [{ roleTitle: contains }, { company: { name: contains } }];
+  }
+
+  const [total, rows] = await Promise.all([
+    db.application.count({ where }),
+    db.application.findMany({
+      where,
+      orderBy: listOrder(query),
+      skip: (query.page - 1) * query.pageSize,
+      take: query.pageSize,
+      include: withCompany,
+      omit: listOmit,
+    }),
+  ]);
+
+  return {
+    items: rows.map(toApplicationListItem),
+    meta: {
+      page: query.page,
+      pageSize: query.pageSize,
+      total,
+      // There is always a page 1, even an empty one.
+      totalPages: Math.max(1, Math.ceil(total / query.pageSize)),
+    },
+  };
+}
+
+/**
+ * The ORDER BY for the list. The id comes last as a tie-breaker: without it, rows with
+ * the same sort value can come back in any order, so paging could show one twice and
+ * skip another. Ids are UUID v7, so they also follow the order the rows were added.
+ */
+function listOrder({
+  sortBy,
+  order,
+}: ListApplicationsQuery): Prisma.ApplicationOrderByWithRelationInput[] {
+  const tieBreaker = { id: order };
+  switch (sortBy) {
+    case 'appliedOn':
+      // Saved jobs have no applied date. Postgres puts empty values first when sorting
+      // newest first; they belong at the end either way.
+      return [{ appliedOn: { sort: order, nulls: 'last' } }, tieBreaker];
+    case 'company':
+      // The normalized name is lowercase, so "acme" and "Beta" sort A–Z on any database.
+      return [{ company: { normalizedName: order } }, tieBreaker];
+    case 'createdAt':
+    case 'updatedAt':
+      return [{ [sortBy]: order }, tieBreaker];
+  }
+}
+
+/**
+ * Prisma's `contains` becomes SQL `ILIKE '%…%'` without escaping, so a search for
+ * "100%" would also find "1000" (% = anything, _ = any one character). A backslash
+ * makes the next character plain; Postgres uses it as LIKE's escape by default.
+ */
+function escapeLike(text: string): string {
+  return text.replace(/[\\%_]/g, '\\$&');
+}
+
 /**
  * When the first timeline event happened. Applied on an earlier day: noon of that day
  * in the user's timezone (we know the day, not the time). Otherwise: right now.
@@ -104,6 +186,10 @@ function firstEventTime(input: CreateApplicationInput, timezone: string, now: Da
 
 /** A database row → the shape the API sends (dates as strings, no user id). */
 function toApplication(row: ApplicationRow): Application {
+  return { ...toApplicationListItem(row), jobDescription: row.jobDescription };
+}
+
+function toApplicationListItem(row: ApplicationListRow): ApplicationListItem {
   return {
     id: row.id,
     status: row.status,
@@ -113,7 +199,6 @@ function toApplication(row: ApplicationRow): Application {
     jobUrl: row.jobUrl,
     location: row.location,
     workMode: row.workMode,
-    jobDescription: row.jobDescription,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   };

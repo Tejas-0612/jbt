@@ -1,5 +1,11 @@
-import { HouseIcon, PlusCircleIcon, PlusIcon, type Icon } from '@phosphor-icons/react';
-import { Link, NavLink, Outlet, useMatch } from 'react-router';
+import {
+  BriefcaseIcon,
+  HouseIcon,
+  PlusCircleIcon,
+  PlusIcon,
+  type Icon,
+} from '@phosphor-icons/react';
+import { Link, NavLink, Outlet, ScrollRestoration, useMatch } from 'react-router';
 import { Button } from '@/components/ui/button';
 import { Wordmark } from '@/components/wordmark';
 import { AccountMenu } from '@/features/auth/account-menu';
@@ -13,12 +19,16 @@ interface NavItem {
 }
 
 /*
- * Only pages that exist get a navigation item: Applications, Agenda and Settings
- * join with their slices. The phone tab bar follows the same rule.
+ * Only pages that exist get a navigation item: Agenda and Settings join with their
+ * slices. The phone tab bar follows the same rule.
  */
-const SIDEBAR_ITEMS: NavItem[] = [{ to: '/', label: 'Dashboard', icon: HouseIcon }];
+const SIDEBAR_ITEMS: NavItem[] = [
+  { to: '/', label: 'Dashboard', icon: HouseIcon },
+  { to: '/applications', label: 'Applications', icon: BriefcaseIcon },
+];
 const TAB_ITEMS: NavItem[] = [
   { to: '/', label: 'Home', icon: HouseIcon },
+  { to: '/applications', label: 'Applications', icon: BriefcaseIcon },
   { to: '/applications/new', label: 'Add', icon: PlusCircleIcon },
 ];
 
@@ -33,6 +43,8 @@ export function RootLayout() {
 
   return (
     <div className="min-h-svh md:grid md:grid-cols-[248px_minmax(0,1fr)]">
+      {/* A new page starts at the top; Back returns to where you were (e.g. down the list). */}
+      <ScrollRestoration />
       <aside className="sticky top-0 hidden h-svh flex-col gap-8 bg-sidebar px-4 py-5 md:flex">
         <Wordmark />
         <nav aria-label="Main">
@@ -84,7 +96,7 @@ export function RootLayout() {
       </div>
 
       <nav aria-label="Main" className="fixed inset-x-0 bottom-0 z-20 border-t bg-card md:hidden">
-        <ul className="grid grid-cols-2">
+        <ul className="grid grid-cols-3">
           {TAB_ITEMS.map(({ to, label, icon: ItemIcon }) => (
             <li key={to}>
               <NavLink

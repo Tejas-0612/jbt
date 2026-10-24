@@ -8,6 +8,10 @@ import { server } from './server';
 // going nowhere. (MSW 3 calls this onUnhandledFrame; it was onUnhandledRequest.)
 beforeAll(() => server.listen({ onUnhandledFrame: 'error' }));
 
+// jsdom draws nothing, so it has no scrolling and prints "Not implemented" whenever
+// the app's ScrollRestoration scrolls. Nothing to test there: do nothing instead.
+window.scrollTo = () => {};
+
 // Every test starts fresh: remove rendered components and per-test overrides.
 afterEach(() => {
   cleanup();

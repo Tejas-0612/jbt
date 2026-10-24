@@ -1,5 +1,10 @@
-import { apiErrorBodySchema, successEnvelopeSchema } from '@jbt/shared';
-import type { z } from 'zod';
+import {
+  apiErrorBodySchema,
+  pageEnvelopeSchema,
+  successEnvelopeSchema,
+  type PageMeta,
+} from '@jbt/shared';
+import { z } from 'zod';
 
 /** An error answer from the API, a failure to reach it, or an answer of the wrong shape. */
 export class ApiError extends Error {
@@ -32,6 +37,28 @@ export class ApiError extends Error {
  */
 export function getJson<S extends z.ZodType>(path: string, dataSchema: S): Promise<z.output<S>> {
   return requestJson(path, { headers: { Accept: 'application/json' } }, dataSchema);
+}
+
+/** One page of a list: its items and where it sits in the whole list. */
+export interface Page<T> {
+  items: T[];
+  meta: PageMeta;
+}
+
+/**
+ * GETs a list endpoint (`{ data: [...], meta }`) and checks every item against
+ * `itemSchema`. Same errors as `getJson`.
+ */
+export async function getPage<S extends z.ZodType>(
+  path: string,
+  itemSchema: S,
+): Promise<Page<z.output<S>>> {
+  const { status, body } = await receiveJson(path, { headers: { Accept: 'application/json' } });
+  const envelope = expectShape(path, status, pageEnvelopeSchema, body);
+  return {
+    items: expectShape(path, status, z.array(itemSchema), envelope.data),
+    meta: envelope.meta,
+  };
 }
 
 /** POSTs `body` as JSON. Same answer checks and errors as `getJson`. */
@@ -87,23 +114,42 @@ async function requestJson<S extends z.ZodType>(
   init: RequestInit,
   dataSchema: S,
 ): Promise<z.output<S>> {
+  const { status, body } = await receiveJson(path, init);
+  // Runtime check, in two steps: the { data } wrapper, then the payload itself.
+  const envelope = expectShape(path, status, successEnvelopeSchema, body);
+  return expectShape(path, status, dataSchema, envelope.data);
+}
+
+/** Sends the request and reads the JSON answer. Throws ApiError for an error answer. */
+async function receiveJson(
+  path: string,
+  init: RequestInit,
+): Promise<{ status: number; body: unknown }> {
   const response = await send(path, init);
   const body: unknown = await response.json().catch(() => null);
   if (!response.ok) throw errorFrom(response, body);
+  return { status: response.status, body };
+}
 
-  // Runtime check, in two steps: the { data } wrapper, then the payload itself.
-  // If the API and web app ever disagree about a shape, fail here with a clear
-  // error instead of breaking somewhere deep in the UI.
-  const envelope = successEnvelopeSchema.safeParse(body);
-  const payload = envelope.success ? dataSchema.safeParse(envelope.data.data) : envelope;
-  if (!payload.success) {
+/**
+ * If the API and web app ever disagree about a shape, fail here with a clear error
+ * instead of breaking somewhere deep in the UI.
+ */
+function expectShape<S extends z.ZodType>(
+  path: string,
+  status: number,
+  schema: S,
+  value: unknown,
+): z.output<S> {
+  const result = schema.safeParse(value);
+  if (!result.success) {
     throw new ApiError(
-      response.status,
+      status,
       'INVALID_RESPONSE',
       `Unexpected answer from ${path}. The web app and API may be out of sync.`,
       undefined,
-      { cause: payload.error },
+      { cause: result.error },
     );
   }
-  return payload.data;
+  return result.data;
 }

@@ -1,5 +1,6 @@
 import type { RouteObject } from 'react-router';
 import { ApplicationPage } from '@/features/applications/application-page';
+import { ApplicationsPage } from '@/features/applications/applications-page';
 import { LoginPage } from '@/features/auth/login-page';
 import { RequireSignIn } from '@/features/auth/require-sign-in';
 import { NewApplicationPage } from '@/features/applications/new-application-page';
@@ -24,6 +25,7 @@ export const routes: RouteObject[] = [
         Component: RootLayout,
         children: [
           { index: true, Component: DashboardPage },
+          { path: 'applications', Component: ApplicationsPage },
           { path: 'applications/new', Component: NewApplicationPage },
           { path: 'applications/:id', Component: ApplicationPage },
           { path: '*', Component: NotFoundPage },

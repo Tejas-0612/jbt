@@ -63,3 +63,19 @@ export type ValidationErrorDetails = z.infer<typeof validationErrorDetailsSchema
  * because TypeScript can't type the generic version without a cast).
  */
 export const successEnvelopeSchema = z.object({ data: z.unknown() });
+
+/**
+ * `meta` of every list answer: `{ "data": [...], "meta": { ... } }`. There is always
+ * a page 1 (empty when there is nothing), so `totalPages` is at least 1, and a
+ * `page` above `totalPages` means the request asked for a page past the end.
+ */
+export const pageMetaSchema = z.object({
+  page: z.int().min(1),
+  pageSize: z.int().min(1),
+  total: z.int().min(0),
+  totalPages: z.int().min(1),
+});
+export type PageMeta = z.infer<typeof pageMetaSchema>;
+
+/** The outer shape of a list answer. Callers check each item with their own schema. */
+export const pageEnvelopeSchema = z.object({ data: z.array(z.unknown()), meta: pageMetaSchema });
