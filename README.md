@@ -116,11 +116,7 @@ docs/         Product, architecture and design documents
 
 **Docker just started and things fail.** Right after Docker Desktop starts, image downloads can fail with "server gave HTTP response to HTTPS client", or containers can start without their ports published (`docker compose ps` shows `5432/tcp` instead of `127.0.0.1:5433->5432/tcp`). Wait a moment, run `docker compose down`, then `pnpm docker:up`.
 
-**The API test "reports ready when Postgres answers" fails with `expected 503 to be 200`.** The tests can't reach the `jbt_test` database. Is Docker running (`pnpm docker:up`)? If it is, `jbt_test` may be missing: it is created only when the PostgreSQL data volume is first created. Create it without losing any data:
-
-```sh
-docker compose exec postgres psql -U jbt -d jbt_dev -c "CREATE DATABASE jbt_test"
-```
+**The API tests stop with "Could not apply migrations to the test database".** They can't reach PostgreSQL. Start Docker, then run `pnpm docker:up`. (A missing `jbt_test` database is not a problem: the tests create it.)
 
 **`Cannot find module '../../generated/prisma/client'`.** The Prisma client is generated during `pnpm install`, and something skipped or removed it. Run `pnpm db:generate`.
 

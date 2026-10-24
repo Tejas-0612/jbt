@@ -29,6 +29,8 @@ export default function setup(project: TestProject): void {
       // over the .env file, so this points Prisma at the test database.
       env: { ...process.env, DATABASE_URL: testDatabaseUrl, PRISMA_HIDE_UPDATE_MESSAGE: '1' },
       stdio: 'pipe',
+      // Text, not bytes: on failure Vitest prints the output, which is unreadable as bytes.
+      encoding: 'utf8',
     });
   } catch (error) {
     throw new Error(
