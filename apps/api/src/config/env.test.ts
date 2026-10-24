@@ -11,6 +11,9 @@ describe('loadConfig', () => {
       PORT: 4000,
       LOG_LEVEL: 'info',
       DATABASE_URL,
+      WEB_ORIGIN: 'http://localhost:5173',
+      GOOGLE_CLIENT_ID: undefined,
+      GOOGLE_CLIENT_SECRET: undefined,
     });
   });
 
@@ -34,5 +37,40 @@ describe('loadConfig', () => {
 
   it('refuses an unknown NODE_ENV', () => {
     expect(() => loadConfig({ DATABASE_URL, NODE_ENV: 'staging' })).toThrow(/NODE_ENV/);
+  });
+
+  it.each(['http://localhost:5173/', 'http://localhost:5173/app', 'localhost:5173'])(
+    'refuses a WEB_ORIGIN that is not just an origin: %s',
+    (WEB_ORIGIN) => {
+      expect(() => loadConfig({ DATABASE_URL, WEB_ORIGIN })).toThrow(/WEB_ORIGIN/);
+    },
+  );
+
+  describe('Google settings', () => {
+    const google = { GOOGLE_CLIENT_ID: 'id.apps.googleusercontent.com', GOOGLE_CLIENT_SECRET: 's' };
+    const production = { DATABASE_URL, NODE_ENV: 'production', WEB_ORIGIN: 'https://jbt.example' };
+
+    it('are optional in development, and blank values count as not set', () => {
+      const config = loadConfig({ DATABASE_URL, GOOGLE_CLIENT_ID: '', GOOGLE_CLIENT_SECRET: ' ' });
+
+      expect(config.GOOGLE_CLIENT_ID).toBeUndefined();
+      expect(config.GOOGLE_CLIENT_SECRET).toBeUndefined();
+    });
+
+    it('must be set together', () => {
+      expect(() => loadConfig({ DATABASE_URL, GOOGLE_CLIENT_ID: 'id' })).toThrow(
+        /GOOGLE_CLIENT_SECRET/,
+      );
+    });
+
+    it('are required in production, and so is an https WEB_ORIGIN', () => {
+      expect(() => loadConfig(production)).toThrow(/GOOGLE_CLIENT_ID/);
+      expect(() =>
+        loadConfig({ ...production, ...google, WEB_ORIGIN: 'http://jbt.example' }),
+      ).toThrow(/WEB_ORIGIN/);
+      expect(loadConfig({ ...production, ...google }).GOOGLE_CLIENT_ID).toBe(
+        google.GOOGLE_CLIENT_ID,
+      );
+    });
   });
 });

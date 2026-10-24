@@ -5,7 +5,8 @@ import { z } from 'zod';
 import { buildApp } from '../../app';
 import { createDb, type Db } from '../../db/client';
 import { testConfig } from '../../test/config';
-import { createTestUser, resetDb } from '../../test/db';
+import { resetDb } from '../../test/db';
+import { signedInUser } from '../../test/sign-in';
 
 // Integration tests: real routes, real service, real test database (`pnpm docker:up`).
 const config = testConfig();
@@ -19,15 +20,19 @@ const NOW = new Date('2026-10-23T02:00:00.000Z');
 const A_TODAY = '2026-10-23';
 const B_TODAY = '2026-10-22';
 
-let userA: Awaited<ReturnType<typeof createTestUser>>;
-let userB: Awaited<ReturnType<typeof createTestUser>>;
+type As = 'a' | 'b';
+type SignedIn = Awaited<ReturnType<typeof signedInUser>>;
+let signedIn: Record<As, SignedIn>;
+let userA: SignedIn['user'];
+let userB: SignedIn['user'];
 
 beforeEach(async () => {
   // Only Date is faked; real timers keep the database driver working.
   vi.useFakeTimers({ now: NOW, toFake: ['Date'] });
   await resetDb(db);
-  userA = await createTestUser(db, 'a');
-  userB = await createTestUser(db, 'b');
+  signedIn = { a: await signedInUser(db, config, 'a'), b: await signedInUser(db, config, 'b') };
+  userA = signedIn.a.user;
+  userB = signedIn.b.user;
 });
 afterEach(() => {
   vi.useRealTimers();
@@ -40,16 +45,15 @@ const valid = {
   appliedOn: A_TODAY,
 };
 
-type As = 'a' | 'b';
 const post = (payload: object, as: As = 'a') =>
   app.inject({
     method: 'POST',
     url: '/api/v1/applications',
     payload,
-    headers: { 'x-dev-user': as },
+    headers: signedIn[as].headers,
   });
 const get = (id: string, as: As = 'a') =>
-  app.inject({ method: 'GET', url: `/api/v1/applications/${id}`, headers: { 'x-dev-user': as } });
+  app.inject({ method: 'GET', url: `/api/v1/applications/${id}`, headers: signedIn[as].headers });
 
 /** Reading answers through the shared schemas also proves the API sends the agreed shapes. */
 const applicationIn = (body: unknown) => z.object({ data: applicationSchema }).parse(body).data;
@@ -183,6 +187,7 @@ describe('POST /api/v1/applications', () => {
         method: 'POST',
         url: '/api/v1/applications',
         payload: valid,
+        headers: signedIn.a.headers,
       });
       await racingApp.close();
 
@@ -244,6 +249,7 @@ describe('POST /api/v1/applications', () => {
       method: 'POST',
       url: '/api/v1/applications',
       payload: valid,
+      headers: signedIn.a.headers,
     });
     await failingApp.close();
 
@@ -281,39 +287,16 @@ describe('GET /api/v1/applications/:id', () => {
   });
 });
 
-describe('the stand-in signed-in user', () => {
-  it('answers 401 when the sample users are missing', async () => {
-    await resetDb(db);
-
-    const response = await post(valid);
-
-    expect(response.statusCode).toBe(401);
-    expect(errorIn(response.json()).message).toContain('pnpm db:seed');
-  });
-
-  it('answers 401 for an unknown x-dev-user', async () => {
+describe('when signed out', () => {
+  it('answers 401 and saves nothing', async () => {
     const response = await app.inject({
-      method: 'GET',
-      url: `/api/v1/applications/${randomUUID()}`,
-      headers: { 'x-dev-user': 'c' },
+      method: 'POST',
+      url: '/api/v1/applications',
+      payload: valid,
+      headers: { origin: config.WEB_ORIGIN },
     });
 
     expect(response.statusCode).toBe(401);
-  });
-
-  it('answers 401 to everyone in production, until real sign-in exists', async () => {
-    const productionApp = buildApp({
-      config: { ...config, NODE_ENV: 'production' },
-      db: createDb(config.DATABASE_URL),
-    });
-
-    const responses = [
-      await productionApp.inject({ method: 'POST', url: '/api/v1/applications', payload: valid }),
-      await productionApp.inject({ method: 'GET', url: `/api/v1/applications/${randomUUID()}` }),
-    ];
-    await productionApp.close();
-
-    expect(responses.map((response) => response.statusCode)).toEqual([401, 401]);
     expect(await countRows()).toEqual(NOTHING_SAVED);
   });
 });

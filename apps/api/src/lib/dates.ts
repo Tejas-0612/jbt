@@ -43,3 +43,15 @@ function parseIsoDate(date: string): [number, number, number] {
   if (!match) throw new Error(`Not a calendar date: "${date}"`);
   return [Number(match[1]), Number(match[2]), Number(match[3])];
 }
+
+/** True for a timezone name this runtime knows, e.g. "Asia/Kolkata" or "UTC". */
+export function isValidTimeZone(timezone: string): boolean {
+  if (timezone.length > 64) return false;
+  try {
+    // Throws a RangeError for a name it doesn't know.
+    new Intl.DateTimeFormat('en-US', { timeZone: timezone });
+    return true;
+  } catch {
+    return false;
+  }
+}
