@@ -6,7 +6,7 @@ A personal job-search tracker: know every application, understand what happened,
 
 "Job Tracker" is a working name.
 
-**Status:** early development. The first feature works end to end: add an application and see it on its own page. There is no list of applications yet. Sign-in (Google, plus sample users in development) is being built: the API side is done, and the web app's sign-in page comes next (see [`CLAUDE.md`](CLAUDE.md)).
+**Status:** early development. The first feature works end to end: add an application and see it on its own page. There is no list of applications yet. You sign in with Google, or in development as a sample user (see [`CLAUDE.md`](CLAUDE.md)).
 
 ## Tech stack
 
@@ -33,11 +33,11 @@ pnpm install           # installs everything and generates the Prisma client
 cp .env.example .env   # local settings (works in PowerShell and Git Bash)
 pnpm docker:up         # starts PostgreSQL and Mailpit, waits until they are healthy
 pnpm db:migrate        # creates the tables in jbt_dev
-pnpm db:seed           # adds two sample users for development
+pnpm db:seed           # optional: adds the two sample users (signing in as one creates it too)
 pnpm dev               # starts the API and the web app
 ```
 
-Open http://localhost:5173 and click **Add application**. To check the API and database directly: http://localhost:5173/ready should answer `{"data":{"status":"ready"}}`.
+Open http://localhost:5173 and sign in: **Sign in as Sample User A** (development only), or **Continue with Google** once it's set up (see below). Then click **Add application**. To check the API and database directly: http://localhost:5173/ready should answer `{"data":{"status":"ready"}}`.
 
 Stop the apps with Ctrl+C. `pnpm docker:down` stops the containers and keeps your data.
 
@@ -64,7 +64,7 @@ The API checks its settings at startup. If one is missing or invalid, it refuses
 
 ### Sign in with Google (optional in development)
 
-Without Google settings, the API still works: in development you sign in as sample user A or B (`POST /api/v1/auth/dev-login`, which doesn't exist in production). To use your real Google account, create a free OAuth client once:
+Without Google settings, everything else still works: in development the sign-in page offers **Sign in as Sample User A / B** (`POST /api/v1/auth/dev-login`, which doesn't exist in production). To use your real Google account, create a free OAuth client once:
 
 1. Open [Google Cloud Console](https://console.cloud.google.com/) and create a project (for example "Job Tracker dev").
 2. Open **Google Auth Platform** and click **Get started**. Enter an app name and your email, choose **External** as the audience, and finish.

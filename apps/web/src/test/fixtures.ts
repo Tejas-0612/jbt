@@ -1,4 +1,15 @@
-import type { Application } from '@jbt/shared';
+import type { Application, Me } from '@jbt/shared';
+
+/** The signed-in user, as GET /api/v1/me sends it. */
+export function sampleMe(overrides: Partial<Me> = {}): Me {
+  return {
+    id: '01a1639c-2848-72b2-b558-6ddb5d2b5a53',
+    email: 'user-a@example.com',
+    name: 'Sample User A',
+    timezone: 'Asia/Kolkata',
+    ...overrides,
+  };
+}
 
 /** An application as the API sends it. Tests override what they care about. */
 export function sampleApplication(overrides: Partial<Application> = {}): Application {

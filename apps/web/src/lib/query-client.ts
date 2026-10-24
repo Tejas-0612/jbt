@@ -1,4 +1,5 @@
-import { QueryClient } from '@tanstack/react-query';
+import { QueryCache, QueryClient } from '@tanstack/react-query';
+import { meKey } from '@/features/auth/api';
 import { ApiError } from './api';
 
 /**
@@ -7,7 +8,18 @@ import { ApiError } from './api';
  * like the real thing.
  */
 export function createQueryClient(): QueryClient {
-  return new QueryClient({
+  const client = new QueryClient({
+    queryCache: new QueryCache({
+      // A 401 from any page's data means the session ended while the app was open
+      // (30 days unused, or signed out in another tab). Ask /me again: it 401s too,
+      // and the sign-in check (RequireSignIn) sends the user to the sign-in page.
+      onError: (error, query) => {
+        const sessionEnded = error instanceof ApiError && error.status === 401;
+        if (sessionEnded && query.queryKey[0] !== meKey[0]) {
+          void client.invalidateQueries({ queryKey: meKey });
+        }
+      },
+    }),
     defaultOptions: {
       queries: {
         // Answers count as fresh for 30 s: opening a page again doesn't refetch at once.
@@ -20,4 +32,5 @@ export function createQueryClient(): QueryClient {
       },
     },
   });
+  return client;
 }
