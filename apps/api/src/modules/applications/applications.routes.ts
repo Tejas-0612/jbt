@@ -1,7 +1,10 @@
 import {
   apiErrorBody,
   createApplicationInputSchema,
+  listApplicationsQuerySchema,
   type Application,
+  type ApplicationListItem,
+  type PageMeta,
   type ValidationErrorDetails,
 } from '@jbt/shared';
 import type { FastifyPluginCallback } from 'fastify';
@@ -9,7 +12,7 @@ import { z } from 'zod';
 import type { Db } from '../../db/client';
 import { requireCurrentUser } from '../../http/current-user';
 import { todayIn } from '../../lib/dates';
-import { createApplication, getApplication } from './applications.service';
+import { createApplication, getApplication, listApplications } from './applications.service';
 
 interface ApplicationRoutesOptions {
   db: Db;
@@ -38,6 +41,21 @@ export const applicationRoutes: FastifyPluginCallback<ApplicationRoutesOptions> 
 
     const application = await createApplication(db, user, input.data);
     return reply.code(201).send({ data: application } satisfies { data: Application });
+  });
+
+  app.get('/applications', async (request, reply) => {
+    const user = requireCurrentUser(request);
+
+    const query = listApplicationsQuerySchema.safeParse(request.query);
+    if (!query.success) {
+      const details = z.flattenError(query.error) satisfies ValidationErrorDetails;
+      return reply
+        .code(400)
+        .send(apiErrorBody('VALIDATION_ERROR', 'Some list settings are not valid.', details));
+    }
+
+    const { items, meta } = await listApplications(db, user.id, query.data);
+    return { data: items, meta } satisfies { data: ApplicationListItem[]; meta: PageMeta };
   });
 
   app.get<{ Params: { id: string } }>('/applications/:id', async (request, reply) => {
