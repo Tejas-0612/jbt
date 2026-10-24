@@ -13,5 +13,10 @@ const rootEnv = existsSync(ROOT_ENV_FILE)
 export default defineConfig({
   test: {
     env: rootEnv,
+    // Once, before any test: apply the committed migrations to the test database.
+    globalSetup: ['./src/test/global-setup.ts'],
+    // Test files share that one database and empty its tables, so they run one
+    // after another instead of in parallel.
+    fileParallelism: false,
   },
 });

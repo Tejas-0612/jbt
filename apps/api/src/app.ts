@@ -2,7 +2,9 @@ import { randomUUID } from 'node:crypto';
 import Fastify, { type FastifyInstance, type FastifyServerOptions } from 'fastify';
 import type { Config } from './config/env';
 import type { Db } from './db/client';
+import { registerCurrentUser } from './http/current-user';
 import { registerErrorHandlers } from './http/errors';
+import { applicationRoutes } from './modules/applications/applications.routes';
 import { healthRoutes } from './modules/health/health.routes';
 
 function loggerOptions(config: Config): FastifyServerOptions['logger'] {
@@ -55,6 +57,17 @@ export function buildApp({ config, db }: AppDependencies): FastifyInstance {
   registerErrorHandlers(app);
 
   void app.register(healthRoutes, { db });
+
+  // The product API. Everything inside knows who is signed in; the hook only
+  // applies to routes registered in here (Fastify keeps it inside this scope).
+  void app.register(
+    (api, _options, done) => {
+      registerCurrentUser(api, { config, db });
+      void api.register(applicationRoutes, { db });
+      done();
+    },
+    { prefix: '/api/v1' },
+  );
 
   return app;
 }

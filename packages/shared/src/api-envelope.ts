@@ -47,6 +47,17 @@ export const apiErrorBodySchema = z.object({
 });
 
 /**
+ * `details` of a 400 VALIDATION_ERROR: messages per field, for the form to show under
+ * each field, plus messages about the request as a whole (e.g. an unknown field).
+ * The API builds it with Zod's `z.flattenError`.
+ */
+export const validationErrorDetailsSchema = z.object({
+  formErrors: z.array(z.string()),
+  fieldErrors: z.record(z.string(), z.array(z.string())),
+});
+export type ValidationErrorDetails = z.infer<typeof validationErrorDetailsSchema>;
+
+/**
  * The outer success shape `{ data: ... }`. Callers then check `data` with the
  * endpoint's own schema (two steps instead of one generic `z.object({ data: T })`,
  * because TypeScript can't type the generic version without a cast).

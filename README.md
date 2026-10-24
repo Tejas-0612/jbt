@@ -6,7 +6,7 @@ A personal job-search tracker: know every application, understand what happened,
 
 "Job Tracker" is a working name.
 
-**Status:** early development. The foundation (Phase 0) is in place, but there are no product features yet. The web app shows a temporary system-status page.
+**Status:** early development. The first feature works end to end: add an application and see it on its own page. There is no list of applications yet, and no real sign-in: in development you are a sample user from the seed (see [`CLAUDE.md`](CLAUDE.md)).
 
 ## Tech stack
 
@@ -32,10 +32,12 @@ Using VS Code? It will offer the recommended extensions (ESLint, Prettier, Edito
 pnpm install           # installs everything and generates the Prisma client
 cp .env.example .env   # local settings (works in PowerShell and Git Bash)
 pnpm docker:up         # starts PostgreSQL and Mailpit, waits until they are healthy
+pnpm db:migrate        # creates the tables in jbt_dev
+pnpm db:seed           # adds two sample users for development
 pnpm dev               # starts the API and the web app
 ```
 
-Open http://localhost:5173. The status page should show the API as **Running** and the database as **Ready**. If something is down, the page says what to start.
+Open http://localhost:5173 and click **Add application**. To check the API and database directly: http://localhost:5173/ready should answer `{"data":{"status":"ready"}}`.
 
 Stop the apps with Ctrl+C. `pnpm docker:down` stops the containers and keeps your data.
 
@@ -76,18 +78,19 @@ Run these from the repo root.
 | `pnpm docker:down`                  | Stops them. Your data is kept                                                   |
 | `pnpm docker:reset`                 | **Deletes all local data**, then starts fresh containers                        |
 | `pnpm db:generate`                  | Regenerates the Prisma client after a change to `apps/api/prisma/schema.prisma` |
-| `pnpm db:migrate`                   | Creates and applies database migrations (development only)                      |
+| `pnpm db:migrate`                   | Regenerates the client, then creates and applies migrations to `jbt_dev`        |
+| `pnpm db:seed`                      | Adds (or updates) the two sample users in `jbt_dev`. Refuses in production      |
 | `pnpm db:status`                    | Shows which migrations are applied                                              |
 | `pnpm db:studio`                    | Opens Prisma Studio to browse the data                                          |
 
-There are no migrations yet, so `pnpm db:status` ends with an error for now. That is expected.
+After changing `schema.prisma`, run `pnpm db:migrate` and commit the new folder it creates in `apps/api/prisma/migrations/`. Prisma 7 doesn't seed automatically, so run `pnpm db:seed` after resetting the database.
 
 ## Tests
 
 Tests sit next to the code they test (`*.test.ts`, `*.test.tsx`) and run with Vitest.
 
 - **Web app and shared tests** need nothing else running. The web tests fake the API at the network level with MSW.
-- **API tests** use the real `jbt_test` database, so run `pnpm docker:up` first. They never touch `jbt_dev`.
+- **API tests** use the real `jbt_test` database, so run `pnpm docker:up` first. They never touch `jbt_dev`. Before they start, they apply any missing migrations to `jbt_test` themselves. They empty its tables between tests, so the test files run one at a time.
 
 To run one package's tests: `pnpm --filter @jbt/web test` (or `@jbt/api`, `@jbt/shared`).
 
@@ -97,7 +100,7 @@ To run one package's tests: `pnpm --filter @jbt/web test` (or `@jbt/api`, `@jbt/
 
 ```text
 apps/
-  api/        Fastify API (src/) and the Prisma schema (prisma/)
+  api/        Fastify API (src/) and the Prisma schema, migrations and seed (prisma/)
   web/        React web app (src/)
 packages/
   shared/     Zod schemas and types used by both apps
@@ -109,17 +112,17 @@ docs/         Product, architecture and design documents
 
 **The API won't start: "Invalid environment configuration".** `.env` is missing or has a bad value. Copy `.env.example` to `.env`. The message lists each problem.
 
-**The status page says the database is not reachable.** Docker isn't running, or the containers aren't up. Start Docker, then run `pnpm docker:up`.
+**Saving an application says "Couldn't reach the server", or `/ready` answers `NOT_READY`.** If `/ready` doesn't answer at all, the API isn't running: start it with `pnpm dev`. If it says `NOT_READY`, Docker isn't running or the containers aren't up: start Docker, then run `pnpm docker:up`.
+
+**Saving says "No signed-in user. Run `pnpm db:seed`…".** The sample users are missing (e.g. after `pnpm docker:reset`). Run `pnpm db:seed`.
 
 **Docker just started and things fail.** Right after Docker Desktop starts, image downloads can fail with "server gave HTTP response to HTTPS client", or containers can start without their ports published (`docker compose ps` shows `5432/tcp` instead of `127.0.0.1:5433->5432/tcp`). Wait a moment, run `docker compose down`, then `pnpm docker:up`.
 
-**The API test "reports ready when Postgres answers" fails with `expected 503 to be 200`.** The tests can't reach the `jbt_test` database. Is Docker running (`pnpm docker:up`)? If it is, `jbt_test` may be missing: it is created only when the PostgreSQL data volume is first created. Create it without losing any data:
-
-```sh
-docker compose exec postgres psql -U jbt -d jbt_dev -c "CREATE DATABASE jbt_test"
-```
+**The API tests stop with "Could not apply migrations to the test database".** They can't reach PostgreSQL. Start Docker, then run `pnpm docker:up`. (A missing `jbt_test` database is not a problem: the tests create it.)
 
 **`Cannot find module '../../generated/prisma/client'`.** The Prisma client is generated during `pnpm install`, and something skipped or removed it. Run `pnpm db:generate`.
+
+**Prisma says "Update available 7.10.1 -> 8.0.0-…".** Ignore it. The project pins Prisma 7 on purpose.
 
 **A port is already in use.** The web app always uses 5173, so stop whatever else is using it. The API port (`PORT`) and the PostgreSQL port (`POSTGRES_PORT`) can be changed in `.env`. If you change `POSTGRES_PORT`, change the port in `DATABASE_URL` and `TEST_DATABASE_URL` too.
 

@@ -2,7 +2,7 @@ import { apiErrorBody, healthResponseSchema } from '@jbt/shared';
 import { http, HttpResponse } from 'msw';
 import { describe, expect, it } from 'vitest';
 import { server } from '@/test/server';
-import { ApiError, getJson } from './api';
+import { ApiError, getJson, postJson } from './api';
 
 describe('getJson', () => {
   it('returns the data part of a correct answer', async () => {
@@ -56,6 +56,43 @@ describe('getJson', () => {
 
     await expect(getJson('/health', healthResponseSchema)).rejects.toMatchObject({
       code: 'INVALID_RESPONSE',
+    });
+  });
+});
+
+describe('postJson', () => {
+  it('sends the body as JSON and returns the data part of the answer', async () => {
+    let received: unknown;
+    server.use(
+      http.post('/echo', async ({ request }) => {
+        received = await request.json();
+        return HttpResponse.json({ data: { status: 'ok' } }, { status: 201 });
+      }),
+    );
+
+    await expect(postJson('/echo', { name: 'Acme' }, healthResponseSchema)).resolves.toEqual({
+      status: 'ok',
+    });
+    expect(received).toEqual({ name: 'Acme' });
+  });
+
+  it('keeps the error details, so a form can show each field’s message', async () => {
+    const details = { formErrors: [], fieldErrors: { companyName: ['Add the company name'] } };
+    server.use(
+      http.post('/echo', () =>
+        HttpResponse.json(
+          apiErrorBody('VALIDATION_ERROR', 'Some fields need attention.', details),
+          {
+            status: 400,
+          },
+        ),
+      ),
+    );
+
+    await expect(postJson('/echo', {}, healthResponseSchema)).rejects.toMatchObject({
+      status: 400,
+      code: 'VALIDATION_ERROR',
+      details,
     });
   });
 });

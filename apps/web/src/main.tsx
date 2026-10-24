@@ -3,18 +3,15 @@ import '@fontsource-variable/figtree';
 import '@fontsource-variable/newsreader';
 import './styles/globals.css';
 
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClientProvider } from '@tanstack/react-query';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { RouterProvider } from 'react-router';
-import { router } from './app/router';
+import { createBrowserRouter, RouterProvider } from 'react-router';
+import { routes } from './app/router';
+import { createQueryClient } from './lib/query-client';
 
-/** Caches API data, de-duplicates requests and refetches when the tab regains focus. */
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: { staleTime: 30_000 },
-  },
-});
+const queryClient = createQueryClient();
+const router = createBrowserRouter(routes);
 
 const rootElement = document.getElementById('root');
 if (!rootElement) throw new Error('index.html is missing <div id="root">');
