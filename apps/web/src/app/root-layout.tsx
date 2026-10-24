@@ -1,6 +1,9 @@
-import { FlagIcon, HouseIcon, PlusCircleIcon, PlusIcon, type Icon } from '@phosphor-icons/react';
+import { HouseIcon, PlusCircleIcon, PlusIcon, type Icon } from '@phosphor-icons/react';
 import { Link, NavLink, Outlet, useMatch } from 'react-router';
 import { Button } from '@/components/ui/button';
+import { Wordmark } from '@/components/wordmark';
+import { AccountMenu } from '@/features/auth/account-menu';
+import { useMe } from '@/features/auth/api';
 import { cn } from '@/lib/utils';
 
 interface NavItem {
@@ -25,6 +28,8 @@ const TAB_ITEMS: NavItem[] = [
  */
 export function RootLayout() {
   const onAddPage = useMatch('/applications/new') !== null;
+  // Always there: RequireSignIn only renders this layout once /me has answered.
+  const { data: me } = useMe();
 
   return (
     <div className="min-h-svh md:grid md:grid-cols-[248px_minmax(0,1fr)]">
@@ -59,15 +64,18 @@ export function RootLayout() {
           <div className="md:hidden">
             <Wordmark />
           </div>
-          {/* Phones use the "Add" tab instead; no button on the form itself. */}
-          {!onAddPage && (
-            <Button asChild className="ml-auto hidden md:inline-flex">
-              <Link to="/applications/new">
-                <PlusIcon aria-hidden />
-                Add application
-              </Link>
-            </Button>
-          )}
+          <div className="ml-auto flex items-center gap-3">
+            {/* Phones use the "Add" tab instead; no button on the form itself. */}
+            {!onAddPage && (
+              <Button asChild className="hidden md:inline-flex">
+                <Link to="/applications/new">
+                  <PlusIcon aria-hidden />
+                  Add application
+                </Link>
+              </Button>
+            )}
+            {me && <AccountMenu me={me} />}
+          </div>
         </header>
         {/* Bottom padding on phones keeps content clear of the tab bar. */}
         <main className="flex-1 px-4 pb-24 md:px-8 md:pb-12">
@@ -97,17 +105,5 @@ export function RootLayout() {
         </ul>
       </nav>
     </div>
-  );
-}
-
-/** "Job Tracker" is a placeholder name until the product gets its real one. */
-function Wordmark() {
-  return (
-    <Link to="/" className="flex w-fit items-center gap-2.5 rounded-md">
-      <span className="flex size-8 items-center justify-center rounded-md bg-primary text-primary-foreground">
-        <FlagIcon aria-hidden weight="bold" className="size-4" />
-      </span>
-      <span className="font-bold text-brand-deep">Job Tracker</span>
-    </Link>
   );
 }

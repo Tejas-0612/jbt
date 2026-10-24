@@ -11,9 +11,12 @@ describe('database schema', () => {
   beforeEach(() => resetDb(db));
   afterAll(() => db.$disconnect());
 
-  /** A user with one company, one application and that application's first activity. */
+  /** A user with a session, one company, one application and that application's first activity. */
   async function createUserWithData(key: 'a' | 'b') {
     const user = await createTestUser(db, key);
+    await db.session.create({
+      data: { userId: user.id, tokenHash: `hash-of-${key}`, expiresAt: new Date() },
+    });
     const company = await db.company.create({
       data: { userId: user.id, name: 'Acme Corp', normalizedName: 'acme corp' },
     });
@@ -108,11 +111,22 @@ describe('database schema', () => {
     await db.user.delete({ where: { id: a.user.id } });
 
     const rowsOwnedBy = async (userId: string) => ({
+      sessions: await db.session.count({ where: { userId } }),
       companies: await db.company.count({ where: { userId } }),
       applications: await db.application.count({ where: { userId } }),
       activities: await db.activity.count({ where: { userId } }),
     });
-    expect(await rowsOwnedBy(a.user.id)).toEqual({ companies: 0, applications: 0, activities: 0 });
-    expect(await rowsOwnedBy(b.user.id)).toEqual({ companies: 1, applications: 1, activities: 1 });
+    expect(await rowsOwnedBy(a.user.id)).toEqual({
+      sessions: 0,
+      companies: 0,
+      applications: 0,
+      activities: 0,
+    });
+    expect(await rowsOwnedBy(b.user.id)).toEqual({
+      sessions: 1,
+      companies: 1,
+      applications: 1,
+      activities: 1,
+    });
   });
 });

@@ -6,7 +6,7 @@ A personal job-search tracker: know every application, understand what happened,
 
 "Job Tracker" is a working name.
 
-**Status:** early development. The first feature works end to end: add an application and see it on its own page. There is no list of applications yet, and no real sign-in: in development you are a sample user from the seed (see [`CLAUDE.md`](CLAUDE.md)).
+**Status:** early development. The first feature works end to end: add an application and see it on its own page. There is no list of applications yet. You sign in with Google, or in development as a sample user (see [`CLAUDE.md`](CLAUDE.md)).
 
 ## Tech stack
 
@@ -33,11 +33,11 @@ pnpm install           # installs everything and generates the Prisma client
 cp .env.example .env   # local settings (works in PowerShell and Git Bash)
 pnpm docker:up         # starts PostgreSQL and Mailpit, waits until they are healthy
 pnpm db:migrate        # creates the tables in jbt_dev
-pnpm db:seed           # adds two sample users for development
+pnpm db:seed           # optional: adds the two sample users (signing in as one creates it too)
 pnpm dev               # starts the API and the web app
 ```
 
-Open http://localhost:5173 and click **Add application**. To check the API and database directly: http://localhost:5173/ready should answer `{"data":{"status":"ready"}}`.
+Open http://localhost:5173 and sign in: **Sign in as Sample User A** (development only), or **Continue with Google** once it's set up (see below). Then click **Add application**. To check the API and database directly: http://localhost:5173/ready should answer `{"data":{"status":"ready"}}`.
 
 Stop the apps with Ctrl+C. `pnpm docker:down` stops the containers and keeps your data.
 
@@ -61,6 +61,20 @@ Settings live in `.env` at the repo root, which git ignores. `.env.example` list
 The API checks its settings at startup. If one is missing or invalid, it refuses to start and lists every problem. `DATABASE_URL` is the only one without a default. The API tests also need `TEST_DATABASE_URL`.
 
 `.env.example` is committed, so never put real secrets in it.
+
+### Sign in with Google (optional in development)
+
+Without Google settings, everything else still works: in development the sign-in page offers **Sign in as Sample User A / B** (`POST /api/v1/auth/dev-login`, which doesn't exist in production). To use your real Google account, create a free OAuth client once:
+
+1. Open [Google Cloud Console](https://console.cloud.google.com/) and create a project (for example "Job Tracker dev").
+2. Open **Google Auth Platform** and click **Get started**. Enter an app name and your email, choose **External** as the audience, and finish.
+3. Under **Audience**, leave the app in **Testing** and add your Google account under **Test users**. While testing, only listed test users can sign in.
+4. Under **Clients**, click **Create client**. Choose **Web application**, and add this **Authorized redirect URI**, exactly:
+   `http://localhost:5173/api/v1/auth/google/callback`
+5. Copy the client ID and the client secret into your `.env` as `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`. Copy the secret right away: Google may not show it again.
+6. Restart `pnpm dev`.
+
+The app asks Google only for your name and email (`openid email profile`). It never stores Google's tokens.
 
 ## Scripts
 
@@ -114,7 +128,13 @@ docs/         Product, architecture and design documents
 
 **Saving an application says "Couldn't reach the server", or `/ready` answers `NOT_READY`.** If `/ready` doesn't answer at all, the API isn't running: start it with `pnpm dev`. If it says `NOT_READY`, Docker isn't running or the containers aren't up: start Docker, then run `pnpm docker:up`.
 
-**Saving says "No signed-in user. Run `pnpm db:seed`…".** The sample users are missing (e.g. after `pnpm docker:reset`). Run `pnpm db:seed`.
+**The API answers 401 "You are not signed in."** Every `/api/v1` request needs a session cookie, except signing in and out. Sign in first. Your session ends after 30 days without use, or when you sign out.
+
+**The API answers 403 "This request did not come from the app".** A POST, PATCH or DELETE must carry an `Origin` header equal to `WEB_ORIGIN`. Browsers add it themselves; with curl, add `-H "Origin: http://localhost:5173"`. If the web app itself gets this, check `WEB_ORIGIN` in `.env`.
+
+**Google says "redirect_uri_mismatch".** The redirect URI in Google Cloud Console must be exactly `http://localhost:5173/api/v1/auth/google/callback` (http, port 5173, no trailing slash), and `WEB_ORIGIN` must be `http://localhost:5173`.
+
+**Google says "Access blocked" or the app "has not completed the Google verification process".** Your account isn't a test user: add it under Google Auth Platform → Audience → Test users.
 
 **Docker just started and things fail.** Right after Docker Desktop starts, image downloads can fail with "server gave HTTP response to HTTPS client", or containers can start without their ports published (`docker compose ps` shows `5432/tcp` instead of `127.0.0.1:5433->5432/tcp`). Wait a moment, run `docker compose down`, then `pnpm docker:up`.
 

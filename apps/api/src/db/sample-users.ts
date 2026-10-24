@@ -1,6 +1,7 @@
 /**
- * Made-up users for development (`pnpm db:seed`) and tests. Two of them, so we can
- * check that A never sees B's data. Never created in production.
+ * Made-up users for development (`pnpm db:seed`, and the dev login, which creates them
+ * if missing) and tests. Two of them, so we can check that A never sees B's data.
+ * Never created in production: the seed refuses, and the dev login doesn't exist there.
  */
 export const SAMPLE_USERS = {
   a: {

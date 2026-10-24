@@ -3,7 +3,9 @@ import { render } from '@testing-library/react';
 import type { ReactElement } from 'react';
 import { createMemoryRouter, RouterProvider } from 'react-router';
 import { routes } from '@/app/router';
+import { meKey } from '@/features/auth/api';
 import { createQueryClient } from '@/lib/query-client';
+import { sampleMe } from './fixtures';
 
 /**
  * A fresh cache per test (no test sees another's data), with the app's own settings,
@@ -34,11 +36,19 @@ export function renderPage(page: ReactElement, { path = '/' }: { path?: string }
  * Use it to click through like a user: links and redirects really change pages.
  * `router.state.location` tells where the app ended up.
  */
-export function renderApp({ path = '/' }: { path?: string } = {}) {
+export function renderApp({
+  path = '/',
+  signedIn = true,
+}: { path?: string; signedIn?: boolean } = {}) {
   const router = createMemoryRouter(routes, { initialEntries: [path] });
+  const client = newQueryClient();
+  // Signed in (the default): the app has already loaded who you are, so pages show
+  // at once, as they do for a user moving around the app. Sign-in tests pass
+  // signedIn: false and answer /me themselves.
+  if (signedIn) client.setQueryData(meKey, sampleMe());
 
   const result = render(
-    <QueryClientProvider client={newQueryClient()}>
+    <QueryClientProvider client={client}>
       <RouterProvider router={router} />
     </QueryClientProvider>,
   );

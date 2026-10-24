@@ -99,10 +99,15 @@ export function NewApplicationPage() {
           return details.data.formErrors[0] ?? FIX_FIELDS;
         }
       }
+      // Session ended while the form was open. Not redirecting keeps the typed text;
+      // signing in again in another tab makes Save work here.
+      if (error.status === 401) {
+        return `You've been signed out. ${KEPT} Sign in again in another tab, then press Save here.`;
+      }
       if (error.code === 'NETWORK_ERROR' || error.code === 'API_UNREACHABLE') {
         return `Couldn't reach the server. ${KEPT} Try again in a moment.`;
       }
-      // Other 4xx messages are written for people (e.g. "Run pnpm db:seed…" in development).
+      // Other 4xx messages are written for people.
       if (error.status >= 400 && error.status < 500) return `${error.message} ${KEPT}`;
     }
     return `Something went wrong on our side. ${KEPT} Please try again.`;

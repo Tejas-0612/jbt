@@ -1,11 +1,16 @@
 import { randomUUID } from 'node:crypto';
+import fastifyCookie from '@fastify/cookie';
 import Fastify, { type FastifyInstance, type FastifyServerOptions } from 'fastify';
 import type { Config } from './config/env';
 import type { Db } from './db/client';
 import { registerCurrentUser } from './http/current-user';
 import { registerErrorHandlers } from './http/errors';
+import { registerOriginCheck } from './http/origin-check';
 import { applicationRoutes } from './modules/applications/applications.routes';
+import { authRoutes } from './modules/auth/auth.routes';
+import type { GoogleSignIn } from './modules/auth/google';
 import { healthRoutes } from './modules/health/health.routes';
+import { userRoutes } from './modules/users/users.routes';
 
 function loggerOptions(config: Config): FastifyServerOptions['logger'] {
   return {
@@ -30,13 +35,15 @@ function loggerOptions(config: Config): FastifyServerOptions['logger'] {
 export interface AppDependencies {
   config: Config;
   db: Db;
+  /** Google sign-in. Left out or null: not set up (server.ts makes it when configured). */
+  google?: GoogleSignIn | null;
 }
 
 /**
  * Creates the API without starting it. Tests call this and send fake requests
  * with app.inject(); server.ts calls it and then listens on a real port.
  */
-export function buildApp({ config, db }: AppDependencies): FastifyInstance {
+export function buildApp({ config, db, google = null }: AppDependencies): FastifyInstance {
   const app = Fastify({
     logger: loggerOptions(config),
     // Every request gets a unique ID, shown in every log line it produces.
@@ -55,15 +62,26 @@ export function buildApp({ config, db }: AppDependencies): FastifyInstance {
   });
 
   registerErrorHandlers(app);
+  // Reads the Cookie header into request.cookies; adds reply.setCookie / clearCookie.
+  void app.register(fastifyCookie);
 
   void app.register(healthRoutes, { db });
 
-  // The product API. Everything inside knows who is signed in; the hook only
-  // applies to routes registered in here (Fastify keeps it inside this scope).
+  // The product API. Fastify keeps a hook inside the scope it was added in (and the
+  // scopes nested in it), so:
+  //   /api/v1          Origin check on every POST/PATCH/DELETE (CSRF)
+  //   ├── /auth        signing in and out: no session needed
+  //   └── everything   needs a signed-in user, or answers 401
   void app.register(
     (api, _options, done) => {
-      registerCurrentUser(api, { config, db });
-      void api.register(applicationRoutes, { db });
+      registerOriginCheck(api, config);
+      void api.register(authRoutes, { prefix: '/auth', config, db, google });
+      void api.register((signedIn, _signedInOptions, signedInDone) => {
+        registerCurrentUser(signedIn, { config, db });
+        void signedIn.register(userRoutes, { db });
+        void signedIn.register(applicationRoutes, { db });
+        signedInDone();
+      });
       done();
     },
     { prefix: '/api/v1' },

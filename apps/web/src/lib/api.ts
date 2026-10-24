@@ -51,29 +51,45 @@ export function postJson<S extends z.ZodType>(
   );
 }
 
+/** POSTs to an endpoint that answers 204 No Content (e.g. sign out). Same errors as `postJson`. */
+export async function postNoContent(path: string, body?: unknown): Promise<void> {
+  const response = await send(path, {
+    method: 'POST',
+    headers:
+      body === undefined
+        ? { Accept: 'application/json' }
+        : { Accept: 'application/json', 'Content-Type': 'application/json' },
+    body: body === undefined ? undefined : JSON.stringify(body),
+  });
+  if (!response.ok) throw errorFrom(response, await response.json().catch(() => null));
+}
+
+async function send(path: string, init: RequestInit): Promise<Response> {
+  try {
+    return await fetch(path, init);
+  } catch {
+    throw new ApiError(0, 'NETWORK_ERROR', 'Could not reach the server.');
+  }
+}
+
+function errorFrom(response: Response, body: unknown): ApiError {
+  const errorBody = apiErrorBodySchema.safeParse(body);
+  if (errorBody.success) {
+    const { code, message, details } = errorBody.data.error;
+    return new ApiError(response.status, code, message, details);
+  }
+  // No JSON error: e.g. the dev proxy answers 502 when the API isn't running.
+  return new ApiError(response.status, 'API_UNREACHABLE', 'The API is not responding.');
+}
+
 async function requestJson<S extends z.ZodType>(
   path: string,
   init: RequestInit,
   dataSchema: S,
 ): Promise<z.output<S>> {
-  let response: Response;
-  try {
-    response = await fetch(path, init);
-  } catch {
-    throw new ApiError(0, 'NETWORK_ERROR', 'Could not reach the server.');
-  }
-
+  const response = await send(path, init);
   const body: unknown = await response.json().catch(() => null);
-
-  if (!response.ok) {
-    const errorBody = apiErrorBodySchema.safeParse(body);
-    if (errorBody.success) {
-      const { code, message, details } = errorBody.data.error;
-      throw new ApiError(response.status, code, message, details);
-    }
-    // No JSON error: e.g. the dev proxy answers 502 when the API isn't running.
-    throw new ApiError(response.status, 'API_UNREACHABLE', 'The API is not responding.');
-  }
+  if (!response.ok) throw errorFrom(response, body);
 
   // Runtime check, in two steps: the { data } wrapper, then the payload itself.
   // If the API and web app ever disagree about a shape, fail here with a clear

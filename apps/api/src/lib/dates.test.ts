@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { dateColumnFrom, isoDateFrom, noonOn, todayIn } from './dates';
+import { dateColumnFrom, isValidTimeZone, isoDateFrom, noonOn, todayIn } from './dates';
 
 describe('todayIn', () => {
   // 02:00 UTC on 23 Oct: morning of the 23rd in Kolkata, still evening of the 22nd in New York.
@@ -37,5 +37,15 @@ describe('DATE columns', () => {
 
   it('refuse something that is not a calendar date', () => {
     expect(() => dateColumnFrom('7 Oct 2026')).toThrow('Not a calendar date');
+  });
+});
+
+describe('isValidTimeZone', () => {
+  it.each(['Asia/Kolkata', 'America/New_York', 'UTC', 'Asia/Calcutta'])('accepts %s', (zone) => {
+    expect(isValidTimeZone(zone)).toBe(true);
+  });
+
+  it.each(['Mars/Olympus_Mons', '', 'Asia/Kolkata; DROP TABLE users'])('refuses %s', (zone) => {
+    expect(isValidTimeZone(zone)).toBe(false);
   });
 });
