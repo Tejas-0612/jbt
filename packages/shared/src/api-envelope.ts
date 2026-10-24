@@ -76,3 +76,6 @@ export const pageMetaSchema = z.object({
   totalPages: z.int().min(1),
 });
 export type PageMeta = z.infer<typeof pageMetaSchema>;
+
+/** The outer shape of a list answer. Callers check each item with their own schema. */
+export const pageEnvelopeSchema = z.object({ data: z.array(z.unknown()), meta: pageMetaSchema });
