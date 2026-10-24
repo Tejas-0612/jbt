@@ -38,6 +38,7 @@ describe('createApplicationInputSchema', () => {
       companyName: '  Acme Corp ',
       location: '   ',
       jobUrl: '',
+      workMode: '',
       jobDescription: ' Build APIs. ',
     });
 
@@ -45,6 +46,7 @@ describe('createApplicationInputSchema', () => {
       companyName: 'Acme Corp',
       location: null,
       jobUrl: null,
+      workMode: null,
       jobDescription: 'Build APIs.',
     });
   });

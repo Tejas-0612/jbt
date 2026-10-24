@@ -70,10 +70,12 @@ export function createApplicationInputSchema(today: string) {
             .nullable(),
         ),
       location: optionalText(APPLICATION_LIMITS.location),
+      // A dropdown left on "Not specified" sends "", which means not given, like blanks.
       workMode: z
-        .enum(WORK_MODES, 'Choose Remote, Hybrid or Onsite')
+        .string()
         .nullish()
-        .transform((value) => value ?? null),
+        .transform(blankToNull)
+        .pipe(z.enum(WORK_MODES, 'Choose Remote, Hybrid or Onsite').nullable()),
       jobDescription: optionalText(APPLICATION_LIMITS.jobDescription),
     })
     .superRefine(({ status, appliedOn }, ctx) => {

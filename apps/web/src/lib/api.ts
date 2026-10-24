@@ -5,12 +5,21 @@ import type { z } from 'zod';
 export class ApiError extends Error {
   readonly status: number;
   readonly code: string;
+  /** Extra information from the API, e.g. the per-field messages of a VALIDATION_ERROR. */
+  readonly details: unknown;
 
-  constructor(status: number, code: string, message: string, options?: ErrorOptions) {
+  constructor(
+    status: number,
+    code: string,
+    message: string,
+    details?: unknown,
+    options?: ErrorOptions,
+  ) {
     super(message, options);
     this.name = 'ApiError';
     this.status = status;
     this.code = code;
+    this.details = details;
   }
 }
 
@@ -21,13 +30,35 @@ export class ApiError extends Error {
  * - the API answers with an error                  → the API's own code (e.g. NOT_FOUND)
  * - the answer doesn't match the expected shape    → INVALID_RESPONSE
  */
-export async function getJson<S extends z.ZodType>(
+export function getJson<S extends z.ZodType>(path: string, dataSchema: S): Promise<z.output<S>> {
+  return requestJson(path, { headers: { Accept: 'application/json' } }, dataSchema);
+}
+
+/** POSTs `body` as JSON. Same answer checks and errors as `getJson`. */
+export function postJson<S extends z.ZodType>(
   path: string,
+  body: unknown,
+  dataSchema: S,
+): Promise<z.output<S>> {
+  return requestJson(
+    path,
+    {
+      method: 'POST',
+      headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    },
+    dataSchema,
+  );
+}
+
+async function requestJson<S extends z.ZodType>(
+  path: string,
+  init: RequestInit,
   dataSchema: S,
 ): Promise<z.output<S>> {
   let response: Response;
   try {
-    response = await fetch(path, { headers: { Accept: 'application/json' } });
+    response = await fetch(path, init);
   } catch {
     throw new ApiError(0, 'NETWORK_ERROR', 'Could not reach the server.');
   }
@@ -37,8 +68,8 @@ export async function getJson<S extends z.ZodType>(
   if (!response.ok) {
     const errorBody = apiErrorBodySchema.safeParse(body);
     if (errorBody.success) {
-      const { code, message } = errorBody.data.error;
-      throw new ApiError(response.status, code, message);
+      const { code, message, details } = errorBody.data.error;
+      throw new ApiError(response.status, code, message, details);
     }
     // No JSON error: e.g. the dev proxy answers 502 when the API isn't running.
     throw new ApiError(response.status, 'API_UNREACHABLE', 'The API is not responding.');
@@ -54,6 +85,7 @@ export async function getJson<S extends z.ZodType>(
       response.status,
       'INVALID_RESPONSE',
       `Unexpected answer from ${path}. The web app and API may be out of sync.`,
+      undefined,
       { cause: payload.error },
     );
   }

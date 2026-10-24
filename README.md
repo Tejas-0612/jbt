@@ -6,7 +6,7 @@ A personal job-search tracker: know every application, understand what happened,
 
 "Job Tracker" is a working name.
 
-**Status:** early development. The foundation (Phase 0) is in place, but there are no product features yet. The web app shows a temporary system-status page.
+**Status:** early development. The first feature works end to end: add an application and see it on its own page. There is no list of applications yet, and no real sign-in: in development you are a sample user from the seed (see [`CLAUDE.md`](CLAUDE.md)).
 
 ## Tech stack
 
@@ -37,7 +37,7 @@ pnpm db:seed           # adds two sample users for development
 pnpm dev               # starts the API and the web app
 ```
 
-Open http://localhost:5173. The status page should show the API as **Running** and the database as **Ready**. If something is down, the page says what to start.
+Open http://localhost:5173 and click **Add application**. To check the API and database directly: http://localhost:5173/ready should answer `{"data":{"status":"ready"}}`.
 
 Stop the apps with Ctrl+C. `pnpm docker:down` stops the containers and keeps your data.
 
@@ -112,7 +112,9 @@ docs/         Product, architecture and design documents
 
 **The API won't start: "Invalid environment configuration".** `.env` is missing or has a bad value. Copy `.env.example` to `.env`. The message lists each problem.
 
-**The status page says the database is not reachable.** Docker isn't running, or the containers aren't up. Start Docker, then run `pnpm docker:up`.
+**Saving an application says "Couldn't reach the server", or `/ready` answers `NOT_READY`.** If `/ready` doesn't answer at all, the API isn't running: start it with `pnpm dev`. If it says `NOT_READY`, Docker isn't running or the containers aren't up: start Docker, then run `pnpm docker:up`.
+
+**Saving says "No signed-in user. Run `pnpm db:seed`…".** The sample users are missing (e.g. after `pnpm docker:reset`). Run `pnpm db:seed`.
 
 **Docker just started and things fail.** Right after Docker Desktop starts, image downloads can fail with "server gave HTTP response to HTTPS client", or containers can start without their ports published (`docker compose ps` shows `5432/tcp` instead of `127.0.0.1:5433->5432/tcp`). Wait a moment, run `docker compose down`, then `pnpm docker:up`.
 
